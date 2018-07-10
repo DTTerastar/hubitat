@@ -11,14 +11,17 @@
   "author": "Jason Cheatham <j.cheatham@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "cheerio": "~1.0.0-rc.3",
-    "commander": "~2.20.0",
-    "dotenv-safe": "^6.1.0",
-    "easy-table": "^1.1.1",
-    "html-entities": "^1.2.1",
-    "node-fetch": "~2.5.0",
-    "source-map-support": "~0.5.12",
-    "ws": "~6.1.4"
+    "@types/html-entities": "~1.2.16",
+    "@types/node-fetch": "~1.6.7",
+    "@types/ws": "~4.0.2",
+    "cheerio": "~1.0.0-rc.2",
+    "commander": "~2.15.1",
+    "dotenv-safe": "~5.0.1",
+    "easy-table": "~1.1.1",
+    "html-entities": "~1.2.1",
+    "node-fetch": "~2.1.2",
+    "source-map-support": "~0.5.4",
+    "ws": "~5.1.0"
   },
   "devDependencies": {
     "@types/cheerio": "~0.22.11",

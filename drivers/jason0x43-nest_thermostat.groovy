@@ -261,6 +261,8 @@ private updateState(args) {
 
 	// log.trace "thermostatMode: ${data.hvac_mode}"
 
+	log.trace "thermostatMode: ${data.hvac_mode}"
+
 	if (data.hvac_mode == 'heat') {
 		// log.trace 'setting heating setpoint to ' + data["target_temperature_${scale}"]
 		sendEvent(name: 'heatingSetpoint', value: data["target_temperature_${scale}"])
