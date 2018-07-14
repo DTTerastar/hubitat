@@ -44,7 +44,7 @@ export default function init(context: Context) {
         '(git:org/repo/file.groovy) or local file path'
     )
     .action(async (type, path) => {
-      if (!/[^/]+\/[^/]+\/.*\.groovy$/.test(path)) {
+      if (!/[^/]+\/.*\.groovy$/.test(path)) {
         die('path must have format org/repo/path/to/file.groovy');
       }
 
