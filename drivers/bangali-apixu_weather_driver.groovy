@@ -97,6 +97,8 @@ metadata    {
         input "dashClock", "bool", title: "Flash time ':' every 2 seconds?", required: true, defaultValue: false
         input "pollEvery", "enum", title: "Poll ApiXU how frequently?\nrecommended setting 30 minutes.\nilluminance is always updated every 5 minutes.", required: true, defaultValue: 30,
                             options: [5:"5 minutes",10:"10 minutes",15:"15 minutes",30:"30 minutes"]
+		
+        input "debugOutput", "bool", title:"Enable debug logging?"
     }
 
 }
@@ -114,7 +116,7 @@ def updated()   {
 }
 
 def poll()      {
-    log.debug ">>>>> apixu: Executing 'poll', location: $zipCode"
+    logDebug ">>>>> apixu: Executing 'poll', location: $zipCode"
 
     def obs = getXUdata()
     if (!obs)   {
@@ -242,9 +244,9 @@ def updateLux()     {
 }
 
 private estimateLux(localTime, sunriseTime, sunsetTime, noonTime, twilight_begin, twilight_end, condition_code, cloud, tz_id)     {
-//    log.debug "condition_code: $condition_code | cloud: $cloud"
-//    log.debug "twilight_begin: $twilight_begin | twilight_end: $twilight_end | tz_id: $tz_id"
-//    log.debug "localTime: $localTime | sunriseTime: $sunriseTime | noonTime: $noonTime | sunsetTime: $sunsetTime"
+//    logDebug "condition_code: $condition_code | cloud: $cloud"
+//    logDebug "twilight_begin: $twilight_begin | twilight_end: $twilight_end | tz_id: $tz_id"
+//    logDebug "localTime: $localTime | sunriseTime: $sunriseTime | noonTime: $noonTime | sunsetTime: $sunsetTime"
 
     def tZ = TimeZone.getTimeZone(tz_id)
     def lux = 0l
@@ -252,27 +254,27 @@ private estimateLux(localTime, sunriseTime, sunsetTime, noonTime, twilight_begin
     def l
 
     if (timeOfDayIsBetween(sunriseTime, noonTime, localTime, tZ))      {
-        log.debug "between sunrise and noon"
+        logDebug "between sunrise and noon"
         l = (((localTime.getTime() - sunriseTime.getTime()) * 10000f) / (noonTime.getTime() - sunriseTime.getTime()))
         lux = (l < 50f ? 50l : l.trunc(0) as long)
     }
     else if (timeOfDayIsBetween(noonTime, sunsetTime, localTime, tZ))      {
-        log.debug "between noon and sunset"
+        logDebug "between noon and sunset"
         l = (((sunsetTime.getTime() - localTime.getTime()) * 10000f) / (sunsetTime.getTime() - noonTime.getTime()))
         lux = (l < 50f ? 50l : l.trunc(0) as long)
     }
     else if (timeOfDayIsBetween(twilight_begin, sunriseTime, localTime, tZ))      {
-        log.debug "between sunrise and twilight"
+        logDebug "between sunrise and twilight"
         l = (((localTime.getTime() - twilight_begin.getTime()) * 50f) / (sunriseTime.getTime() - twilight_begin.getTime()))
         lux = (l < 10f ? 10l : l.trunc(0) as long)
     }
     else if (timeOfDayIsBetween(sunsetTime, twilight_end, localTime, tZ))      {
-        log.debug "between sunset and twilight"
+        logDebug "between sunset and twilight"
         l = (((twilight_end.getTime() - localTime.getTime()) * 50f) / (twilight_end.getTime() - sunsetTime.getTime()))
         lux = (l < 10f ? 10l : l.trunc(0) as long)
     }
     else if (!timeOfDayIsBetween(twilight_begin, twilight_end, localTime, tZ))      {
-        log.debug "between non-twilight"
+        logDebug "between non-twilight"
         lux = 5l
         aFCC = false
     }
@@ -295,7 +297,7 @@ private estimateLux(localTime, sunriseTime, sunsetTime, noonTime, twilight_begin
     }
 
     lux = (lux * cCF) as long
-    log.debug "condition: $cC | condition text: $cCT | condition factor: $cCF | lux: $lux"
+    logDebug "condition: $cC | condition text: $cCT | condition factor: $cCF | lux: $lux"
     sendEvent(name: "cCF", value: cCF)
 
     return lux
@@ -347,3 +349,13 @@ def updateClock()       {
         1279: ['Patchy light snow with thunder', 0.5],          1282: ['Moderate or heavy snow with thunder', 0.3]]
 
 //**********************************************************************************************************************
+
+private getDebugOutputSetting() {
+	return (settings?.debugOutput || settings?.debugOutput == null)
+}
+
+private logDebug(msg) {
+	if (debugOutputSetting) {
+		logDebug msg
+	}
+}
