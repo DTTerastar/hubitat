@@ -223,6 +223,7 @@ def moreTiles() {
 			input "showRefresh", title: "Refresh", "bool", required: true, defaultValue: true
 			input "showHistory", title: "Event History", "bool", required: true, defaultValue: true
 			input "showClock", title: "Clock", "enum", multiple: false, required: true, defaultValue: "Small Analog", options: ["Small Analog", "Small Digital", "Large Analog", "Large Digital", "None"]
+	        input "debugOutput", "bool", title:"Enable debug logging?"
 		}
 	}
 }
@@ -260,10 +261,6 @@ def prefs() {
 		
 		section() {
 			href "authenticationPreferences", title:"Access and Authentication"
-		}
-
-		section() {
-	        input "debugOutput", "bool", title:"Enable debug logging?"
 		}
 	}
 }
@@ -1152,4 +1149,14 @@ def customCSS() {
 /*** Custonm CSS End *****/
 </style>
 """
+}
+
+private getDebugOutputSetting() {
+	return (settings?.debugOutput || settings?.debugOutput == null)
+}
+
+private logDebug(msg) {
+	if (debugOutputSetting) {
+		log.debug msg
+	}
 }

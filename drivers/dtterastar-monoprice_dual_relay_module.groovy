@@ -405,7 +405,7 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 
 private logDebug(msg) {
 	if (settings?.debugOutput || settings?.debugOutput == null) {
-		log.debug "$msg"
+		log.debug msg
 	}
 }
 
