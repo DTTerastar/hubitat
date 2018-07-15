@@ -330,13 +330,13 @@ def refreshConfig() {
 
 def parse(String description) {
 	def result = []
-	// logTrace "parse: $description"
+	logTrace "parse: $description"
 	sendEvent(name: "lastCheckin", value: convertToLocalTimeString(new Date()), displayed: false, isStateChange: true)
 	
 	if (!description?.startsWith("Err")) {
 		def cmd = zwave.parse(description, commandClassVersions)
 		if (cmd) {
-			// logTrace "Parse: $cmd"
+			logTrace "Parse: $cmd"
 			result += zwaveEvent(cmd)
 		}
 		else {
@@ -919,8 +919,6 @@ private convertFromScaledValue(val, size) {
 	}
 }
 
-
-
 // Settings
 private getVibrationTypeSettingName() {
 	if (vibrationTypeSetting?.startsWith("Position")) {
@@ -1225,10 +1223,12 @@ private isDuplicateCommand(lastExecuted, allowedMil) {
 
 private logDebug(msg) {
 	if (debugOutputSetting) {
-		log.debug "$msg"
+		log.debug msg
 	}
 }
 
 private logTrace(msg) {
-	//log.trace "$msg"
+	if (debugOutputSetting) {
+		//log.trace msg
+	}
 }
