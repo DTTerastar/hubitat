@@ -356,6 +356,6 @@ private getDebugOutputSetting() {
 
 private logDebug(msg) {
 	if (debugOutputSetting) {
-		logDebug msg
+		log.debug msg
 	}
 }
