@@ -1,6 +1,9 @@
+src/*.js
 node_modules/
 manifest.json
+package-lock.json
+
 .env
 .repos
-src/*.js
 .DS_Store
+
