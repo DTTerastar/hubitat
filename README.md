@@ -1,11 +1,12 @@
-# Hubitat stuff
+# Hubitat apps / drivers
 
 This repository contains the local drivers and apps that are currently loaded
-onto my Hubitat, along with a script to interact with the Hubitat. Some of the
-apps and drivers are my own, some are from other sources, and a few are ones
-from other sources that I cleaned up and/or modified.
+onto my Hubitat.
 
-## hubitat script
+Sme of the pps and drivers are my own, some are from other sources, and a few are
+ones from other sources that I cleaned up and/or modified.
+
+## Hubitat script
 
 The `hubitat` application is TypeScript application that allows some degree of
 interaction with the Hubitat through the command line. The `hubitat` script in
@@ -18,6 +19,10 @@ At the moment, `hubitat` supports 4 commands:
 * **log** - Log messages emitted by apps or devices
 * **pull** - Pull code from the hubitat into the local repo
 * **push** - Push code from the local repo to the hubitat
+
+# Credits
+
+Originally created by https://github.com/jason0x43/hubitat
 
 # License
 
