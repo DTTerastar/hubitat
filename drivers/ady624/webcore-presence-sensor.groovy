@@ -487,3 +487,4 @@ private formatLocalTime(format = "EEE, MMM d yyyy @ h:mm:ss a z", time = now()) 
 	formatter.setTimeZone(location.timeZone)
 	return formatter.format(time)
 }
+

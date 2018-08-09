@@ -18,8 +18,10 @@
  *
  *  Version history
 */
-public static String version() { return "v0.3.105.20180628" }
+public static String version() { return "v0.3.107.20180806" }
 /*
+ *	08/06/2018 >>> v0.3.107.20180806 - BETA M3 - Font Awesome 5 icons, expanding textareas to fix expression scrolling, boolean date and datetime global variable editor fixes
+ *	07/31/2018 >>> v0.3.106.20180731 - BETA M3 - Contact Book removal support
  *	06/28/2018 >>> v0.3.105.20180628 - BETA M3 - Reorder variables, collapse fuel streams, custom web request body, json and urlEncode functions
  *	03/23/2018 >>> v0.3.104.20180323 - BETA M3 - Fixed unexpected dashboard logouts, updating image urls in tiles, 12 am/pm in time(), unary negation following another operator
  *	02/24/2018 >>> v0.3.000.20180224 - BETA M3 - Dashboard redesign by @acd37, collapsible sidebar, fix "was" conditions on decimal attributes and log failures due to duration threshold
@@ -401,6 +403,10 @@ def pageClearAll() {
 /*** 																		***/
 /******************************************************************************/
 
+def isInstalled(){
+ 	return !!state.created   
+}
+
 def installed() {
    	state.created = now()
     state.modified = now()
@@ -690,11 +696,15 @@ private getTemporaryRunTimeData() {
 private getCachedAtomicState(){
     def atomStart = now()        
     
-    atomicState.loadState()
-    def atomState = atomicState.@backingMap    
+    try{
+        atomicState.loadState()
+    	def atomState = atomicState.@backingMap  
+        return atomState
+    }
+    catch(e){
+     	return atomicState
+    }      
     //debug "Atomic state generated in ${now() - atomStart}ms", rtData
-    
-    return atomState
 }
 
 private getRunTimeData(rtData = null, semaphore = null, fetchWrappers = false) {
@@ -943,6 +953,7 @@ private Boolean executeEvent(rtData, event) {
             device: srcEvent ? srcEvent.device : hashId((event.device?:location).id),
             name: srcEvent ? srcEvent.name : event.name,
             value: srcEvent ? srcEvent.value : event.value,
+            descriptionText: srcEvent ? srcEvent.descriptionText : event.descriptionText,
             unit: srcEvent ? srcEvent.unit : event.unit,
             physical: srcEvent ? srcEvent.physical : !!event.physical,
             index: index
@@ -963,6 +974,7 @@ private Boolean executeEvent(rtData, event) {
         setSystemVariableValue(rtData, '$previousEventDevice', [rtData.previousEvent?.device])
         setSystemVariableValue(rtData, '$previousEventDeviceIndex', rtData.previousEvent?.index ?: 0)
         setSystemVariableValue(rtData, '$previousEventAttribute', rtData.previousEvent?.name ?: '')
+        setSystemVariableValue(rtData, '$previousEventDescription', rtData.currentEvent.descriptionText ?: '')
         setSystemVariableValue(rtData, '$previousEventValue', rtData.previousEvent?.value ?: '')
         setSystemVariableValue(rtData, '$previousEventUnit', rtData.previousEvent?.unit ?: '')
         setSystemVariableValue(rtData, '$previousEventDevicePhysical', !!rtData.previousEvent?.physical)
@@ -972,6 +984,7 @@ private Boolean executeEvent(rtData, event) {
         setSystemVariableValue(rtData, '$currentEventDevice', [rtData.currentEvent?.device])
         setSystemVariableValue(rtData, '$currentEventDeviceIndex', (rtData.currentEvent.index != '') && (rtData.currentEvent.index != null) ? rtData.currentEvent.index : 0)
         setSystemVariableValue(rtData, '$currentEventAttribute', rtData.currentEvent.name ?: '')
+        setSystemVariableValue(rtData, '$currentEventDescription', rtData.currentEvent.descriptionText ?: '')
         setSystemVariableValue(rtData, '$currentEventValue', rtData.currentEvent.value ?: '')
         setSystemVariableValue(rtData, '$currentEventUnit', rtData.currentEvent.unit ?: '')
         setSystemVariableValue(rtData, '$currentEventDevicePhysical', !!rtData.currentEvent.physical)
@@ -1737,23 +1750,23 @@ private executePhysicalCommand(rtData, device, command, params = [], delay = nul
             }
             //if we're skipping, we already have a message
             if (skip) {
-            	msg.m = "Skipped execution of physical command [${device.label}].$command($params) because it would make no change to the device."
+            	msg.m = "Skipped execution of physical command [${device.label ?: device.name}].$command($params) because it would make no change to the device."
             } else {
                 if (params.size()) {
                     if (delay) { //not supported
                         device."$command"((params as Object[]) + [delay: delay])
-                        msg.m = "Executed physical command [${device.label}].$command($params, [delay: $delay])"
+                        msg.m = "Executed physical command [${device.label ?: device.name}].$command($params, [delay: $delay])"
                     } else {
                         device."$command"(params as Object[])
-                        msg.m = "Executed physical command [${device.label}].$command($params)"
+                        msg.m = "Executed physical command [${device.label ?: device.name}].$command($params)"
                     }
                 } else {
                     if (delay) { //not supported
                         device."$command"([delay: delay])
-                        msg.m = "Executed physical command [${device.label}].$command([delay: $delay])"
+                        msg.m = "Executed physical command [${device.label ?: device.name}].$command([delay: $delay])"
                     } else {
                         device."$command"()
-                        msg.m = "Executed physical command [${device.label}].$command()"
+                        msg.m = "Executed physical command [${device.label ?: device.name}].$command()"
                     }
                 }
             }
@@ -2376,9 +2389,9 @@ private long vcmd_setLocationMode(rtData, device, params) {
 
 private long vcmd_setAlarmSystemStatus(rtData, device, params) {
 	def statusIdOrName = params[0]
-    def status = rtData.virtualDevices['alarmSystemStatus']?.o?.find{ (it.key == statusIdOrName) || (it.value == statusIdOrName)}.collect{ [id: it.key, name: it.value] }
+    def status = rtData.virtualDevices['alarmSystemStatus']?.ac?.find{ (it.key == statusIdOrName) || (it.value == statusIdOrName)}.collect{ [id: it.key, name: it.value] }
     if (status && status.size()) {
-	    sendLocationEvent(name: 'hsmStatus', value: status[0].id)
+	    sendLocationEvent(name: 'hsmSetArm', value: status[0].id)
     } else {
 	    error "Error setting SmartThings Home Monitor status. Status '$statusIdOrName' does not exist.", rtData
     }
@@ -2799,18 +2812,11 @@ private long vcmd_sendSMSNotification(rtData, device, params) {
 }
 
 private long vcmd_sendNotificationToContacts(rtData, device, params) {
+	// Contact Book has been disabled and we're falling back onto PUSH notifications, if the option is enabled in the SmartApp's settings
+    if (!rtData.redirectContactBook) return 0
 	def message = params[0]
-    List contacts = (params[1] instanceof List ? params[1] : params[1].toString().tokenize(',')).unique();
-	List recipients = rtData.contacts.findAll{ it.key in contacts }.collect{ it.value }
-    if (recipients.size()) {
-        if (recipients && recipients.size()) {
-			def save = !!params[2]
-			sendNotificationToContacts(message, recipients, [event: save, view: [name: "webCoRE", data: [:]]])
-        }
-	} else {
-    	error "Invalid list of contacts: ${params[1]}", rtData
-    }
-    return 0
+    def save = !!params[2]
+    return vcmd_sendPushNotification(rtData, devices, [message, save])
 }
 
 
@@ -3696,6 +3702,15 @@ private evaluateOperand(rtData, node, operand, index = null, trigger = false, ne
             	case 'alarmSystemStatus':
                 	values = [[i: "${node?.$}:v", v:getDeviceAttribute(rtData, rtData.locationId, operand.v)]];
                     break;
+                case 'alarmSystemAlert':
+                	values = [[i: "${node?.$}:v", v:[t: 'string', v: (rtData.event.name == 'hsmAlert' ? rtData.event.value : null)]]]
+                    break;
+                case 'alarmSystemEvent':
+                	values = [[i: "${node?.$}:v", v:[t: 'string', v: (rtData.event.name == 'hsmSetArm' ? rtData.event.value : null)]]]
+                    break;
+                case 'alarmSystemRule':
+                	values = [[i: "${node?.$}:v", v:[t: 'string', v: (rtData.event.name == 'hsmRules' ? rtData.event.value : null)]]]
+                    break;
             	case 'powerSource':
                 	values = [[i: "${node?.$}:v", v:[t: 'enum', v:rtData.powerSource]]];
                     break;
@@ -4438,6 +4453,18 @@ private void subscribeAll(rtData) {
                         	subscriptionId = "$deviceId${operand.v}"
                            	attribute = "hsmStatus"
                         	break;
+                        case 'alarmSystemAlert':
+                        	subscriptionId = "$deviceId${operand.v}"
+                           	attribute = "hsmAlert"
+                        	break;
+                        case 'alarmSystemEvent':
+                        	subscriptionId = "$deviceId${operand.v}"
+                           	attribute = "hsmSetArm"
+                        	break;
+                        case 'alarmSystemRule':
+                        	subscriptionId = "$deviceId${operand.v}"
+                           	attribute = "hsmRules"
+                        	break;
 						case 'time':
                         case 'date':
                         case 'datetime':
@@ -4818,7 +4845,7 @@ private Map getDeviceAttribute(rtData, deviceId, attributeName, subDeviceIndex =
             	def mode = location.getCurrentMode();
             	return [t: 'string', v: hashId(mode.getId()), n: mode.getName()]
         	case 'alarmSystemStatus':
-				def v = rtData.hsmStatus
+				def v = location.hsmStatus ?: rtData.hsmStatus
                 def n = rtData.virtualDevices['alarmSystemStatus']?.o[v]
 				return [t: 'string', v: v, n: n]
         }
@@ -7916,6 +7943,7 @@ private static Map getSystemVariables() {
         '$incidents': [t: "dynamic", d: true],
         '$shmTripped': [t: "boolean", d: true],
 		"\$currentEventAttribute": [t: "string", v: null],
+        "\$currentEventDescription": [t: "string", v: null],
 		"\$currentEventDate": [t: "datetime", v: null],
 		"\$currentEventDelay": [t: "integer", v: null],
 		"\$currentEventDevice": [t: "device", v: null],
@@ -8041,7 +8069,8 @@ private getSystemVariableValue(rtData, name) {
 		case "\$randomSaturation": def result = getRandomValue("\$randomSaturation") ?: (int)Math.round(50 + 50 * Math.random()); setRandomValue("\$randomSaturation", result); return result
 		case "\$randomHue": def result = getRandomValue("\$randomHue") ?: (int)Math.round(360 * Math.random()); setRandomValue("\$randomHue", result); return result
   		case "\$locationMode": return location.getMode()
-		case "\$hsmStatus": switch (rtData.hsmStatus) { case 'disarmed': return 'Disarmed'; case 'armedHome': return 'Armed/Home'; case 'armedAway': return 'Armed/Away'; }; return null;
+		//case "\$hsmStatus": switch (location.hsmStatus ?: rtData.hsmStatus) { case 'allDisarmed' : return 'All Disarmed'; case 'disarmed': return 'Disarmed'; case 'armedHome': return 'Armed/Home'; case 'armedAway': return 'Armed/Away'; }; return null;
+        case "\$hsmStatus": return location.hsmStatus ?: rtData.hsmStatus
     }
 }
 
