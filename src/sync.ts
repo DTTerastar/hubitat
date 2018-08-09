@@ -18,6 +18,9 @@ import {
 } from './common';
 import { CommanderStatic } from 'commander';
 
+import path = require('path');
+import fs = require('fs');
+
 const manifestFile = join(__dirname, '..', 'manifest.json');
 const resourceDirs = {
   app: relative(process.cwd(), join(__dirname, '..', 'apps')),
@@ -306,13 +309,24 @@ async function updateLocalResource(
   }
 
   console.log(`Updating ${type} ${filename}`);
-  writeFileSync(join(resourceDirs[type], remoteRes.filename), resource.source);
+  var path = join(resourceDirs[type], remoteRes.filename);
+  ensureDirectoryExistence(path)
+  writeFileSync(path, resource.source);
 
   const hash = hashSource(resource.source);
   const newResource = { type, hash, filename: remoteRes.filename, ...resource };
   localManifest[type][resource.id] = toManifestEntry(newResource);
 
   return true;
+}
+
+function ensureDirectoryExistence(filePath: string) {
+  var dirname = path.dirname(filePath);
+  if (fs.existsSync(dirname)) {
+    return true;
+  }
+  ensureDirectoryExistence(dirname);
+  fs.mkdirSync(dirname);
 }
 
 /**
@@ -423,7 +437,7 @@ function toManifestEntry(resource: ManifestEntry) {
  */
 function getFilename(resource: CodeResource) {
   const { name, namespace } = resource;
-  return `${namespace}-${name!.toLowerCase().replace(/\s/g, '_')}.groovy`;
+  return `${namespace}/${name!.toLowerCase().replace(/\s/g, '_')}.groovy`;
 }
 
 /**
