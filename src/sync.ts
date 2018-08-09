@@ -437,7 +437,7 @@ function toManifestEntry(resource: ManifestEntry) {
  */
 function getFilename(resource: CodeResource) {
   const { name, namespace } = resource;
-  return `${namespace}/${name!.toLowerCase().replace(/\s/g, '_')}.groovy`;
+  return `${namespace!.toLowerCase()}/${name!.toLowerCase().replace(/\s/g, '-')}.groovy`;
 }
 
 /**
