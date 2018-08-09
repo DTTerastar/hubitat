@@ -170,7 +170,7 @@ def configure() {
 def refresh() {
 	logDebug "Executing refresh()"	
 	def result = []	
-	(1..5).each { ch ->
+	(1..2).each { ch ->
 		result << basicGetCmd(ch)
 	}
 	return delayBetween(result, 500)

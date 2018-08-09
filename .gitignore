@@ -1,7 +1,11 @@
+src/*.js
 node_modules/
 manifest.json
+package-lock.json
+
 .env
 .repos
 src/**/*.js
 src/**/*.js.map
 .DS_Store
+
