@@ -389,7 +389,8 @@ async function updateRemoteResource(
       version: res.version
     };
     localManifest[type][res.id] = toManifestEntry(newResource);
-  } catch (error) {
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
     console.log(`No local script ${filename}, removing from manifest`);
     delete localManifest[type][id];
   }
