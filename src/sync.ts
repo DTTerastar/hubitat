@@ -104,7 +104,7 @@ export default function init(context: Context) {
         const localManifest = loadManifest();
 
         if (!rtype) {
-          console.log('Pulling everything...');
+          console.log(chalk.green('Pulling everything...'));
           await Promise.all(
             ['app', 'driver'].map(async typeStr => {
               const type = <keyof Manifest>typeStr;
@@ -162,7 +162,7 @@ export default function init(context: Context) {
         const localManifest = loadManifest();
 
         if (!rtype) {
-          console.log('Pushing everything...');
+          console.log(chalk.green('Pushing everything...'));
           await Promise.all(
             ['app', 'driver'].map(async typeStr => {
               const type = <CodeResourceType>typeStr;
@@ -179,7 +179,7 @@ export default function init(context: Context) {
             })
           );
         } else if (!id) {
-          console.log(`Pushing all ${rtype}...`);
+          console.log(chalk.green(`Pushing all ${rtype}...`));
           await Promise.all(
             Object.keys(localManifest[rtype]).map(async id => {
               await updateRemoteResource(
@@ -191,7 +191,7 @@ export default function init(context: Context) {
             })
           );
         } else {
-          console.log(`Pushing ${type}:${id}...`);
+          console.log(chalk.green(`Pushing ${type}:${id}...`));
           await updateRemoteResource(type, id, localManifest, remoteManifest);
         }
 
@@ -365,21 +365,20 @@ async function updateRemoteResource(
     const hash = hashSource(source);
     if (hash === localRes.hash) {
       // File hasn't changed -- don't push
-      log(`${filename} hasn't changed; not pushing`);
+      log(chalk.yellow(`${filename} hasn't changed; not pushing`));
       return true;
     }
 
     if (localRes.version !== remoteRes.version) {
-      console.error(`${type} ${filename} is out of date; pull first`);
+      console.log(chalk.red(`${type} ${filename} is out of date; pull first`));
       return false;
     }
 
-    console.log(`Pushing ${type} ${filename}...`);
+    console.log(chalk.green(`Pushing ${type} ${filename}...`));
     const res = await putResource(type, id, localRes.version, source);
     if (res.status === 'error') {
-      console.log(res);
       console.error(
-        `Error pushing ${type} ${filename}: ${trim(res.errorMessage)}`
+        chalk.red(`Error pushing ${type} ${filename}: ${trim(res.errorMessage)}`)
       );
       return false;
     }
