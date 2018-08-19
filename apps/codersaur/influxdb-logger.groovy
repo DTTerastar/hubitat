@@ -256,7 +256,7 @@ def handleAppTouch(evt) {
 def handleModeEvent(evt) {
     logger("handleModeEvent(): Mode changed to: ${evt.value}","debug")
 
-    def locationId = escapeStringForInfluxDB(location.id.toString())
+    def locationId = escapeStringForInfluxDB(location.id)
     def locationName = escapeStringForInfluxDB(location.name)
     def mode = '"' + escapeStringForInfluxDB(evt.value) + '"'
 	def data = "_stMode,locationId=${locationId},locationName=${locationName} mode=${mode}"
@@ -285,14 +285,14 @@ def handleEvent(evt) {
     //    If value is a string, it must be enclosed in double quotes.
     def measurement = evt.name
     // tags:
-    def deviceId = escapeStringForInfluxDB(evt.deviceId.toString())
+    def deviceId = escapeStringForInfluxDB(evt.deviceId)
     def deviceName = escapeStringForInfluxDB(evt.displayName)
     def groupId = escapeStringForInfluxDB(evt?.device.device.groupId)
     def groupName = escapeStringForInfluxDB(getGroupName(evt?.device.device.groupId))
-    def hubId = escapeStringForInfluxDB(evt?.device.device.hubId.toString())
-    def hubName = escapeStringForInfluxDB(evt?.device.device.hub.toString())
+    def hubId = escapeStringForInfluxDB(evt?.device.device.hubId)
+    def hubName = escapeStringForInfluxDB(evt?.device.device.hub)
     // Don't pull these from the evt.device as the app itself will be associated with one location.
-    def locationId = escapeStringForInfluxDB(location.id.toString())
+    def locationId = escapeStringForInfluxDB(location.id)
     def locationName = escapeStringForInfluxDB(location.name)
 
     def unit = escapeStringForInfluxDB(evt.unit)
@@ -545,13 +545,13 @@ def softPoll() {
 def logSystemProperties() {
     logger("logSystemProperties()","trace")
 
-    def locationId = '"' + escapeStringForInfluxDB(location.id.toString()) + '"'
+    def locationId = '"' + escapeStringForInfluxDB(location.id) + '"'
     def locationName = '"' + escapeStringForInfluxDB(location.name) + '"'
 
 	// Location Properties:
     if (prefLogLocationProperties) {
         try {
-            def tz = '"' + escapeStringForInfluxDB(location.timeZone.ID.toString()) + '"'
+            def tz = '"' + escapeStringForInfluxDB(location.timeZone.ID) + '"'
             def mode = '"' + escapeStringForInfluxDB(location.mode) + '"'
             def hubCount = location.hubs.size()
             def times = getSunriseAndSunset()
@@ -572,7 +572,6 @@ def logSystemProperties() {
                 def hubId = '"' + escapeStringForInfluxDB(h.id) + '"'
                 def hubName = '"' + escapeStringForInfluxDB(h.name) + '"'
                 def hubIP = '"' + escapeStringForInfluxDB(h.localIP) + '"'
-                def hubStatus = '"' + escapeStringForInfluxDB(h.status) + '"'
                 def batteryInUse = ("false" == h.hub.getDataValue("batteryInUse")) ? "0i" : "1i"
                 // See fix here for null time returned: https://github.com/codersaur/SmartThings/pull/33/files
                 //def hubUptime = h.hub.getDataValue("uptime") + 'i'
@@ -773,8 +772,8 @@ private encodeCredentialsBasic(username, password) {
  *  Further info: https://docs.influxdata.com/influxdb/v0.10/write_protocols/write_syntax/
  **/
 private escapeStringForInfluxDB(str) {
-    //logger("$str", "info")
     if (str) {
+        str = str.toString()
         str = str.replaceAll(" ", "\\\\ ") // Escape spaces.
         str = str.replaceAll(",", "\\\\,") // Escape commas.
         str = str.replaceAll("=", "\\\\=") // Escape equal signs.
