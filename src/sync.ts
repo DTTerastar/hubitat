@@ -47,13 +47,13 @@ export default function init(context: Context) {
         '(git:org/repo/file.groovy) or local file path'
     )
     .action(async (type, path) => {
-      if (!/[^/]+\/.*\.groovy$/.test(path)) {
-        die('path must have format org/repo/path/to/file.groovy');
-      }
-
       let filename: string;
 
       if (/^git:/.test(path)) {
+        if (!/[^/]+\/.*\.groovy$/.test(path)) {
+          die('path must have format git:org/repo/path/to/file.groovy');
+        }
+  
         const gitPath = path.slice(4);
         const parts = gitPath.split('/');
         const orgPath = join(repoDir, parts[0]);

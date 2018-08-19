@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+BASE_URL=https://rawgit.com/jp0550/webCoRE/hubitat-patches/
+wget -N $BASE_URL/smartapps/ady624/webcore-dashboard.src/webcore-dashboard.groovy -P apps/ady624
+wget -N $BASE_URL/smartapps/ady624/webcore-piston.src/webcore-piston.groovy -P apps/ady624
+wget -N $BASE_URL/smartapps/ady624/webcore-storage.src/webcore-storage.groovy -P apps/ady624
+wget -N $BASE_URL/smartapps/ady624/webcore.src/webcore.groovy -P apps/ady624
+wget -N $BASE_URL/devicetypes/ady624/webcore-presence-sensor.src/webcore-presence-sensor.groovy -P drivers/ady624
