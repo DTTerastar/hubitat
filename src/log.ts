@@ -1,6 +1,7 @@
 import * as WebSocket from 'ws';
 import { Context, die, validateId } from './common';
 import { XmlEntities } from 'html-entities';
+import chalk from 'chalk';
 
 // Setup cli ------------------------------------------------------------------
 
@@ -40,11 +41,22 @@ export default function init(context: Context) {
     });
 }
 
+function color(level: string){
+  switch(level){
+    case "info":return chalk.yellow;
+    case "debug":return chalk.blueBright;
+    case "trace":return chalk.blue;
+    case "warn":return chalk.red;
+    case "error":return chalk.redBright;
+    default: return chalk.white;
+  }
+}
+
 function logMessage(entities: TextConverter, message: Message) {
   const { time, type, msg, level, id, name } = message;
-  console.log(
-    `${time} [${type}:${id}] (${level}) ${name} - ${entities.decode(msg)}`
-  );
+  console.log(color(level)(
+    `${chalk.gray(time)} ${level.slice(0,3)} [${chalk.magenta(type)}:${chalk.white(String("0000" + id).slice(-4))}] ${chalk.white(name)} - ${entities.decode(msg)}`
+  ));
 }
 
 function validateType(type?: string) {

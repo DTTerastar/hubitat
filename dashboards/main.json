@@ -1,0 +1,220 @@
+{
+    "clockMode": null,
+    "tiles": [
+        {
+            "rowSpan": 1,
+            "template": "bulb",
+            "col": 1,
+            "colSpan": 1,
+            "row": 1,
+            "id": 0,
+            "device": 2
+        },
+        {
+            "rowSpan": 1,
+            "template": "motion",
+            "col": 2,
+            "colSpan": 1,
+            "row": 1,
+            "id": 1,
+            "device": 3
+        },
+        {
+            "rowSpan": 1,
+            "template": "motion",
+            "col": 3,
+            "colSpan": 1,
+            "row": 1,
+            "id": 2,
+            "device": 34
+        },
+        {
+            "rowSpan": 1,
+            "template": "bulb",
+            "col": 4,
+            "colSpan": 1,
+            "row": 1,
+            "id": 3,
+            "device": 35
+        },
+        {
+            "rowSpan": 1,
+            "template": "multi",
+            "col": 1,
+            "colSpan": 1,
+            "row": 2,
+            "id": 4,
+            "device": 36
+        },
+        {
+            "rowSpan": 1,
+            "template": "motion",
+            "col": 2,
+            "colSpan": 1,
+            "row": 2,
+            "id": 5,
+            "device": 37
+        },
+        {
+            "rowSpan": 1,
+            "template": "motion",
+            "col": 3,
+            "colSpan": 1,
+            "row": 2,
+            "id": 6,
+            "device": 69
+        },
+        {
+            "rowSpan": 1,
+            "template": "motion",
+            "col": 4,
+            "colSpan": 1,
+            "row": 2,
+            "id": 7,
+            "device": 70
+        },
+        {
+            "rowSpan": 1,
+            "template": "motion",
+            "col": 1,
+            "colSpan": 1,
+            "row": 3,
+            "id": 8,
+            "device": 71
+        },
+        {
+            "rowSpan": 1,
+            "template": "switch",
+            "col": 2,
+            "colSpan": 1,
+            "row": 3,
+            "id": 9,
+            "device": 72
+        },
+        {
+            "rowSpan": 1,
+            "template": "switch",
+            "col": 3,
+            "colSpan": 1,
+            "row": 3,
+            "id": 10,
+            "device": 73
+        },
+        {
+            "rowSpan": 1,
+            "template": "bulb",
+            "col": 4,
+            "colSpan": 1,
+            "row": 3,
+            "id": 11,
+            "device": 74
+        },
+        {
+            "rowSpan": 1,
+            "template": "bulb",
+            "col": 1,
+            "colSpan": 1,
+            "row": 4,
+            "id": 12,
+            "device": 75
+        },
+        {
+            "rowSpan": 1,
+            "template": "bulb",
+            "col": 2,
+            "colSpan": 1,
+            "row": 4,
+            "id": 13,
+            "device": 76
+        },
+        {
+            "rowSpan": 1,
+            "template": "switch",
+            "col": 4,
+            "colSpan": 1,
+            "row": 4,
+            "id": 15,
+            "device": 111
+        },
+        {
+            "rowSpan": 1,
+            "template": "generic",
+            "col": 1,
+            "colSpan": 1,
+            "row": 5,
+            "id": 16,
+            "device": 142
+        },
+        {
+            "rowSpan": 1,
+            "template": "bulb",
+            "col": 2,
+            "colSpan": 1,
+            "row": 5,
+            "id": 17,
+            "device": 143
+        },
+        {
+            "rowSpan": 1,
+            "template": "bulb",
+            "col": 3,
+            "colSpan": 1,
+            "row": 5,
+            "id": 18,
+            "device": 174
+        },
+        {
+            "rowSpan": 1,
+            "template": "switch",
+            "col": 4,
+            "colSpan": 1,
+            "row": 5,
+            "id": 19,
+            "device": 175
+        },
+        {
+            "rowSpan": 1,
+            "template": "switch",
+            "col": 1,
+            "colSpan": 1,
+            "row": 6,
+            "id": 20,
+            "device": 206
+        },
+        {
+            "rowSpan": 1,
+            "template": "bulb",
+            "col": 2,
+            "colSpan": 1,
+            "row": 6,
+            "id": 21,
+            "device": 238
+        },
+        {
+            "rowSpan": 1,
+            "template": "door",
+            "col": 3,
+            "colSpan": 1,
+            "row": 6,
+            "id": 22,
+            "device": 302
+        },
+        {
+            "rowSpan": 1,
+            "template": "door",
+            "col": 4,
+            "colSpan": 1,
+            "row": 6,
+            "id": 23,
+            "device": 334
+        }
+    ],
+    "bgColor": "Black",
+    "lanRefresh": 2,
+    "background": "https://hubit.at/bg",
+    "name": "Main",
+    "readOnly": false,
+    "cloudRefresh": 5,
+    "rows": "6",
+    "cols": "4"
+}

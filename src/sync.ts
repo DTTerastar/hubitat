@@ -4,7 +4,7 @@ import { createHash } from 'crypto';
 import * as cheerio from 'cheerio';
 import { execSync } from 'child_process';
 import fetch from 'node-fetch';
-import chalk from 'chalk'
+import chalk from 'chalk';
 
 import {
   Context,
