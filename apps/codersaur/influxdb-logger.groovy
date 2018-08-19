@@ -254,7 +254,7 @@ def handleAppTouch(evt) {
  *  Log Mode changes.
  **/
 def handleModeEvent(evt) {
-    logger("handleModeEvent(): Mode changed to: ${evt.value}","info")
+    logger("handleModeEvent(): Mode changed to: ${evt.value}","debug")
 
     def locationId = escapeStringForInfluxDB(location.id.toString())
     def locationName = escapeStringForInfluxDB(location.name)
@@ -277,7 +277,7 @@ def handleModeEvent(evt) {
  **/
 def handleEvent(evt) {
     //logger("handleEvent(): $evt.unit","info")
-    logger("handleEvent(): $evt.displayName($evt.name:$evt.unit) $evt.value","info")
+    logger("handleEvent(): $evt.displayName($evt.name:$evt.unit) $evt.value","debug")
     
     // Build data string to send to InfluxDB:
     //  Format: <measurement>[,<tag_name>=<tag_value>] field=<field_value>
@@ -710,7 +710,7 @@ private manageSubscriptions() {
         devs = settings."${da.devices}"
         if (devs && (da.attributes)) {
             da.attributes.each { attr ->
-                logger("manageSubscriptions(): Subscribing to attribute: ${attr}, for devices: ${da.devices}","info")
+                logger("manageSubscriptions(): Subscribing to attribute: ${attr}, for devices: ${da.devices}","debug")
                 // There is no need to check if all devices in the collection have the attribute.
                 subscribe(devs, attr, handleEvent)
             }
@@ -758,7 +758,7 @@ private logger(msg, level = "debug") {
  *  Encode credentials for HTTP Basic authentication.
  **/
 private encodeCredentialsBasic(username, password) {
-    return "Basic " + "${username}:${password}".encodeAsBase64().toString()
+    return "Basic " + "${username}:${password}".bytes.encodeBase64().toString()
 }
 
 /**
@@ -800,7 +800,7 @@ private escapeStringForInfluxDB(str) {
  *  See: https://community.smartthings.com/t/accessing-group-within-a-smartapp/6830
  **/
 private getGroupName(id) {
-
+	return 'Home'
     if (id == null) {return 'Home'}
     //else if (id == 'XXXXXXXXXXXXX') {return 'Group'}
     else {return 'Unknown'}    
