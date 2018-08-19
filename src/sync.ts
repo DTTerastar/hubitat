@@ -4,6 +4,8 @@ import { createHash } from 'crypto';
 import * as cheerio from 'cheerio';
 import { execSync } from 'child_process';
 import fetch from 'node-fetch';
+import chalk from 'chalk'
+
 import {
   Context,
   CodeResource,
@@ -285,7 +287,7 @@ async function updateLocalResource(
   const localRes = localManifest[type][resource.id];
 
   if (localRes && localRes.filename.indexOf(repoDir) === 0) {
-    console.log(`Skipping github resource ${basename(localRes.filename)}`);
+    console.log(chalk.yellow(`Skipping github resource ${basename(localRes.filename)}`));
     return false;
   }
 
@@ -298,17 +300,17 @@ async function updateLocalResource(
     // If the local has changed from the last time it was synced with Hubitat
     // *and* it hasn't been committed, don't update
     if (sourceHash !== localRes.hash && needsCommit(filename)) {
-      console.log(`Skipping ${filename}; please commit first`);
+      console.log(chalk.yellow(`Skipping ${filename}; please commit first`));
       return false;
     }
   }
 
   if (localRes && existsSync(filename) && remoteRes.hash === localRes.hash) {
-    console.log(`Skipping ${filename}; no changes`);
+    console.log(chalk.yellow(`Skipping ${filename}; no changes`));
     return true;
   }
 
-  console.log(`Updating ${type} ${filename}`);
+  console.log(chalk.green(`Updating ${type} ${filename}`));
   var path = join(resourceDirs[type], remoteRes.filename);
   ensureDirectoryExistence(path)
   writeFileSync(path, resource.source);
