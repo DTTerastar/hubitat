@@ -300,7 +300,7 @@ async function updateLocalResource(
     // If the local has changed from the last time it was synced with Hubitat
     // *and* it hasn't been committed, don't update
     if (sourceHash !== localRes.hash && needsCommit(filename)) {
-      console.log(chalk.yellow(`Skipping ${filename}; please commit first`));
+      console.log(chalk.red(`Skipping ${filename}; please commit first`));
       return false;
     }
   }
