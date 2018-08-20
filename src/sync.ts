@@ -363,7 +363,7 @@ async function updateRemoteResource(
     }
 
     const hash = hashSource(source);
-    if (hash === localRes.hash) {
+    if (hash === localRes.hash && localRes.version == remoteRes.version) {
       // File hasn't changed -- don't push
       log(chalk.yellow(`${filename} hasn't changed; not pushing`));
       return true;
@@ -372,6 +372,11 @@ async function updateRemoteResource(
     if (localRes.version !== remoteRes.version) {
       console.log(chalk.red(`${type} ${filename} is out of date; pull first`));
       return false;
+    }
+
+    if (source.length>300*1024) {
+      log(chalk.yellow(`${filename} is TOO large; not pushing`));
+      return true; 
     }
 
     console.log(chalk.green(`Pushing ${type} ${filename}...`));
