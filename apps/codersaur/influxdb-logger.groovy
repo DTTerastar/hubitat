@@ -572,18 +572,10 @@ def logSystemProperties() {
                 def hubId = '"' + escapeStringForInfluxDB(h.id) + '"'
                 def hubName = '"' + escapeStringForInfluxDB(h.name) + '"'
                 def hubIP = '"' + escapeStringForInfluxDB(h.localIP) + '"'
-                def batteryInUse = ("false" == h.hub.getDataValue("batteryInUse")) ? "0i" : "1i"
-                // See fix here for null time returned: https://github.com/codersaur/SmartThings/pull/33/files
-                //def hubUptime = h.hub.getDataValue("uptime") + 'i'
-                def hubLastBootUnixTS = h.hub.uptime + 'i'
-                def zigbeePowerLevel = h.hub.getDataValue("zigbeePowerLevel") + 'i'
-                def zwavePowerLevel =  '"' + escapeStringForInfluxDB(h.hub.getDataValue("zwavePowerLevel")) + '"'
                 def firmwareVersion =  '"' + escapeStringForInfluxDB(h.firmwareVersionString) + '"'
 
                 def data = "_stHub,locationId=${locationId},locationName=${locationName},hubId=${hubId},hubName=${hubName},hubIP=${hubIP} "
-                // See fix here for null time returned: https://github.com/codersaur/SmartThings/pull/33/files
-                //data += "status=${hubStatus},batteryInUse=${batteryInUse},uptime=${hubUptime},zigbeePowerLevel=${zigbeePowerLevel},zwavePowerLevel=${zwavePowerLevel},firmwareVersion=${firmwareVersion}"
-                data += "status=${hubStatus},batteryInUse=${batteryInUse},uptime=${hubLastBootUnixTS},zigbeePowerLevel=${zigbeePowerLevel},zwavePowerLevel=${zwavePowerLevel},firmwareVersion=${firmwareVersion}"
+                data += "firmwareVersion=${firmwareVersion}"
                 postToInfluxDB(data)
             } catch (e) {
 				logger("logSystemProperties(): Unable to log Hub properties: ${e}","error")
