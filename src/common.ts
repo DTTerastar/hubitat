@@ -1,6 +1,7 @@
 import { CommanderStatic } from 'commander';
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
+import chalk from 'chalk';
 
 export interface Context {
   hubitatHost: string;
@@ -12,10 +13,9 @@ export interface Context {
  */
 export function die(message: string | Error) {
   if (typeof message === 'string') {
-    console.error(`\n  error: ${message}\n`);
+    console.error(chalk.red(`Error: ${message}\n`));
   } else {
-    const lines = message.stack!.split('\n');
-    console.error(`\n  ${lines.join('\n  ')}\n`);
+    console.error(chalk.red(`${message.stack}`));
   }
   process.exit(1);
 }

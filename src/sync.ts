@@ -76,7 +76,6 @@ export default function init(context: Context) {
         const rtype = validateCodeType(type);
         const localManifest = loadManifest();
 
-        console.log(`Installing ${filename}...`);
         await createRemoteResource(rtype, filename, localManifest);
         saveManifest(localManifest);
       } catch (error) {
@@ -219,7 +218,7 @@ async function createRemoteResource(
   });
 
   const hash = hashSource(source);
-  console.log(`Creating ${type} ${filename}...`);
+  console.log(chalk.green(`Creating ${type} ${filename}...`));
   const newRes = await postResource(type, source);
   let newEntry: ManifestEntry;
 
