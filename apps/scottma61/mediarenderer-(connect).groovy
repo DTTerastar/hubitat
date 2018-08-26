@@ -284,7 +284,7 @@ def locationHandler(evt) {
 			}
 		}
 	}
-	else if (parsedEvent.headers && parsedEvent.body)
+	else if (parsedEvent?.headers && parsedEvent?.body)
 	{ // MEDIARENDER RESPONSES
         def headerString = new String(parsedEvent?.headers?.decodeBase64())
 		def bodyString = new String(parsedEvent.body.decodeBase64())
