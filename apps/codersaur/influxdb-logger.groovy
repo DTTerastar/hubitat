@@ -393,6 +393,12 @@ def handleEvent(evt) {
         valueBinary = ('detected' == evt.value) ? '1i' : '0i'
         data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
     }
+    else if ('status' == evt.name) { // status: Calculate a binary value (playing = 1, <any other value> = 0)
+        unit = 'status'
+        value = '"' + value + '"'
+        valueBinary = ('playing' == evt.value) ? '1i' : '0i'
+        data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
+    }
     else if ('switch' == evt.name) { // switch: Calculate a binary value (on = 1, off = 0)
         unit = 'switch'
         value = '"' + value + '"'
@@ -443,6 +449,12 @@ def handleEvent(evt) {
         valueBinary = ('touched' == evt.value) ? '1i' : '0i'
         data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
     }
+    else if ('trackDescription' == evt.name) { // thermostatSetpointMode: Calculate a binary value (followSchedule = 0, <any other value> = 1)
+        unit = 'trackDescription'
+        value = '"' + value + '"'
+        valueBinary = ('' == evt.value) ? '0i' : '1i'
+        data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
+    }
     else if ('optimisation' == evt.name) { // optimisation: Calculate a binary value (active = 1, inactive = 0)
         unit = 'optimisation'
         value = '"' + value + '"'
@@ -472,6 +484,9 @@ def handleEvent(evt) {
         value = '"' + value + '"'
         valueBinary = ('closed' == evt.value) ? '1i' : '0i'
         data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
+    }
+    else if ('trackData' == evt.name) {
+        return
     }
     // Catch any other event with a string value that hasn't been handled:
     else if (evt.value ==~ /.*[^0-9\.,-].*/) { // match if any characters are not digits, period, comma, or hyphen.
