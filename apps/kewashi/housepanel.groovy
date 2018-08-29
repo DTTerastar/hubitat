@@ -17,6 +17,9 @@
  * it displays and enables interaction with switches, dimmers, locks, etc
  * 
  * Revision history:
+ * 08/20/2018 - fix another bug in lock that caused render to fail upon toggle
+ * 08/11/2018 - added pistons and other cleanup
+ * 07/24/2018 - fix bug in lock opening and closing with motion detection
  * 06/21/2018 - Automatic push of Hubitat settings to HP server
  * 06/16/2018 - Sync important bug fixes from SmartThings version
  * 06/16/2018 - Add cloud and local options and auto configuration
@@ -32,7 +35,7 @@
  *            - Remove old code block of getHistory code
  * 
  */
-public static String version() { return "v1.622" }
+public static String version() { return "v1.77" }
 public static String handle() { return "HousePanel" }
 definition(
     name: "${handle()}",
@@ -51,15 +54,16 @@ preferences {
         paragraph "The HousePanel url is the full url address where your HousePanel application is installed. " +
                   "This is typically a rPi device on the same network subnet as the Hubitat HUB. \n" +
                   "HousePanel uses this to push the access token and hub id to your server instead of requiring " +
-                  "user manual configuration; however, you can always still configure HousePanel manually. "
+                  "user manual configuration; however, you can always still configure HousePanel manually. " +
+                  "(By the way, I know this isn't the usual auth process. That will come soon)"
         input (name: "hpurl", type: "text", title: "HousePanel url", defaultValue: "http://192.168.11.20/smartthings/housepanel.php", required: true, multiple: false )
         paragraph "Set the Cloud Calls option to True if your HousePanel app is NOT on your local LAN. " +
                   "When this is true all calls to HousePanel will be through the Cloud endpoint. " +
-                  "Actions and updates to be slower than local installations."
+                  "Actions and updates will be slower than local installations."
         input (name: "cloudcalls", type: "bool", title: "Cloud Calls", defaultValue: false, required: true)
         paragraph "Set this to True if you do not have a SmartThings hub. This will make the Hubitat " +
-                  "installation to return blanks and images that are usual done on the Smartthings side. \n" +
-                  "This will also make the app bypass the SmartThings authentication step."
+                  "installation return blanks and images that are usual done on the Smartthings side. \n" +
+                  "This will also make the app bypass any SmartThings authentication step attempts."
         input (name: "hubitatonly", type: "bool", title: "use Hubitat only?", defaultValue: false, required: true)
     }
     section("Lights and Switches...") {
@@ -88,10 +92,11 @@ preferences {
     	input "mywaters", "capability.waterSensor", hideWhenEmpty: true, multiple: true, required: false, title: "Water Sensors"
     	input "myvalves", "capability.valve", hideWhenEmpty: true, multiple: true, required: false, title: "Sprinklers"
     }
-    section ("Other Sensors (duplicates allowed)...") {
+    section ("Other Sensors and Options") {
     	input "mymusics", "capability.musicPlayer", hideWhenEmpty: true, multiple: true, required: false, title: "Music Players"
     	input "mysmokes", "capability.smokeDetector", hideWhenEmpty: true, multiple: true, required: false, title: "Smoke Detectors"
 //    	input "myothers", "capability.sensor", multiple: true, required: false, title: "Other and Virtual Sensors"
+        input (name: "usepistons", type: "bool", multiple: false, title: "Use Pistons (must have a local WebCore installed)?", required: false, defaultValue: false)
     }
 }
 
@@ -123,13 +128,19 @@ def updated() {
 def initialize() {
     configureHub();
     log.debug "Installed with settings: ${settings} "
+    state.usepistons = usepistons
+    if ( state.usepistons ) {
+        webCoRE_init()
+    }
 }
 
 def configureHub() {
     state.hubitatOnly = hubitatonly
     if ( ! state.accessToken ) {
     	createAccessToken(); 
-	    log.debug "Creating new accessToken ... you must save app.id and accessToken in your HousePanel configuration file."
+	    log.debug "Creating new accessToken ..."
+        log.debug "You can optionally specify app.id and accessToken in the clientinfo.php file,"
+        log.debug "but this is no longer required when using the default authentication process"
     }
     
     // get the cloud and local access points
@@ -170,9 +181,6 @@ def configureHub() {
 
     def params = [
         uri: "${hpurl}",
-//        requestContentType: "application/json",
-//        query: null,
-//        body: cmds
         requestContentType: "application/x-www-form-urlencoded",
         query: cmds
     ]
@@ -193,7 +201,6 @@ def configureHub() {
 }
 
 def getSwitch(swid, item=null) {
-//    getThing(myswitches, swid, item)
     item = item? item : myswitches.find {it.id == swid }
     def resp = item ?   [name: item.displayName, switch: item.currentValue("switch")
                          ] : false
@@ -211,8 +218,6 @@ def getMomentary(swid, item=null) {
     def resp = false
     item = item ? item : mymomentaries.find {it.id == swid }
     if ( item && item.hasCapability("Switch") ) {
-        def curval = item.currentValue("switch")
-        if (curval!="on" && curval!="off") { curval = "off" }
         resp = [name: item.displayName, momentary: item.currentValue("switch")]
     }
     return resp
@@ -232,7 +237,6 @@ def getContact(swid, item=null) {
 
 // change to only return lock status and battery
 def getLock(swid, item=null) {
-//    def lock = getThing(mylocks, swid, item)
     item = item? item : mylocks.find {it.id == swid }
     def resp = item ? [:] : false
     if ( item ) {
@@ -266,6 +270,9 @@ def getThermostat(swid, item=null) {
                          ] : false
     if ( item.hasAttribute("humidity") ) {
         resp.put("humidity", item.currentValue("humidity"))
+    }
+    if ( item.hasCapability("Battery") ) {
+        resp.put("battery", item.currentValue("battery"))
     }
     // log.debug "Thermostat response = ${resp}"
     return resp
@@ -321,7 +328,6 @@ def getmyMode(swid, item=null) {
     def resp =  [ name: swid,
               sitename: location.getName(),
               themode: curmodename ];
-    // log.debug "currrent mode = ${curmodename}"
     return resp
 }
 
@@ -339,6 +345,14 @@ def getRoutine(swid, item=null) {
     def routines = location.helloHome?.getPhrases()
     def routine = item ? item : routines.find{it.id == swid}
     def resp = routine ? [name: routine.label, label: routine.label] : false
+    return resp
+}
+
+// change pistonName to name to be consistent
+// but retain original for backward compatibility reasons
+def getPiston(swid, item=null) {
+    item = item ? item : webCoRE_list().find {it.id == swid}
+    def resp = [name: item.name, pistonName: "idle"]
     return resp
 }
 
@@ -461,6 +475,11 @@ def getAllThings() {
         resp = getBlanks(resp)
         resp = getImages(resp)
     }
+
+    // optionally include pistons based on user option
+    if (state.usepistons) {
+        resp = getPistons(resp)
+    }
     
     return resp
 }
@@ -477,8 +496,6 @@ def getModes(resp) {
 }
 
 def getBlanks(resp) {
-    // log.debug "Getting 4 blank tiles"
-    // def resp = []
     def vals = ["b1x1","b1x2","b2x1","b2x2"]
     def val
     vals.each {
@@ -489,8 +506,6 @@ def getBlanks(resp) {
 }
 
 def getImages(resp) {
-//    def resp = []
-    // log.debug "Getting the image tiles"
     def vals = ["img1","img2","img3","img4"]
     def val
     vals.each {
@@ -500,14 +515,21 @@ def getImages(resp) {
     return resp
 }
 
+def getPistons(resp) {
+    def plist = webCoRE_list()
+    log.debug "Number of pistons = " + plist?.size() ?: 0
+    plist?.each {
+        def val = getPiston(it.id, it)
+        resp << [name: it.name, id: it.id, value: val, type: "piston"]
+    }
+    return resp
+}
+
 def getSwitches(resp) {
-//    getThings(myswitches, "switch")
-//    def resp = []
-    // log.debug "Number of switches = " + myswitches?.size() ?: 0
     myswitches?.each {
         def multivalue = getSwitch(it.id, it)
         resp << [name: it.displayName, id: it.id, value: multivalue, type: "switch" ]
-}
+    }
     return resp
 }
 
@@ -532,8 +554,6 @@ def getContacts(resp) {
 }
 
 def getMomentaries(resp) {
-//    def resp = []
-    // log.debug "Number of momentaries = " + mymomentaries?.size() ?: 0
     mymomentaries?.each {
         if ( it.hasCapability("Switch") ) {
             def val = getMomentary(it.id, it)
@@ -544,9 +564,6 @@ def getMomentaries(resp) {
 }
 
 def getLocks(resp) {
-//    getThings(mylocks, "lock")
-//    def resp = []
-    // log.debug "Number of locks = " + mylocks?.size() ?: 0
     mylocks?.each {
         def multivalue = getLock(it.id, it)
         resp << [name: it.displayName, id: it.id, value: multivalue, type: "lock"]
@@ -555,8 +572,6 @@ def getLocks(resp) {
 }
 
 def getMusics(resp) {
-//    def resp = []
-    // log.debug "Number of music players = " + mymusics?.size() ?: 0
     mymusics?.each {
         def multivalue = getMusic(it.id, it)
         resp << [name: it.displayName, id: it.id, value: multivalue, type: "music"]
@@ -565,8 +580,6 @@ def getMusics(resp) {
 }
 
 def getThermostats(resp) {
-//    def resp = []
-    // log.debug "Number of thermostats = " + mythermostats?.size() ?: 0
     mythermostats?.each {
         def multivalue = getThermostat(it.id, it)
         resp << [name: it.displayName, id: it.id, value: multivalue, type: "thermostat" ]
@@ -575,9 +588,6 @@ def getThermostats(resp) {
 }
 
 def getPresences(resp) {
-    // getThings(mypresences, "presence")
-//    def resp = []
-    // log.debug "Number of presences = " + mypresences?.size() ?: 0
     mypresences?.each {
         def multivalue = getPresence(it.id, it)
         resp << [name: it.displayName, id: it.id, value: multivalue, type: "presence"]
@@ -600,8 +610,6 @@ def getSmokes(resp) {
     getThings(resp, mysmokes, "smoke")
 }
 def getTemperatures(resp) {
-//    def resp = []
-    // log.debug "Number of temperatures = " + mytemperatures?.size() ?: 0
     mytemperatures?.each {
         def val = getTemperature(it.id, it)
         resp << [name: it.displayName, id: it.id, value: val, type: "temperature"]
@@ -610,8 +618,6 @@ def getTemperatures(resp) {
 }
 
 def getWeathers(resp) {
-//    def resp = []
-    // log.debug "Number of weathers = " + myweathers?.size() ?: 0
     myweathers?.each {
         def multivalue = getWeather(it.id, it)
         resp << [name: it.displayName, id: it.id, value: multivalue, type: "weather"]
@@ -621,9 +627,7 @@ def getWeathers(resp) {
 
 // get hellohome routines - thanks to ady264 for the tip
 def getRoutines(resp) {
-//    def resp = []
     def routines = location.helloHome?.getPhrases()
-    // log.debug "Number of routines = " + routines?.size() ?: 0
     routines?.each {
         def multivalue = getRoutine(it.id, it)
         resp << [name: it.label, id: it.id, value: multivalue, type: "routine"]
@@ -664,6 +668,9 @@ def autoType(swid) {
     else if ( mytemperatures?.find {it.id == swid } ) { swtype= "temperature" }
     else if ( myothers?.find {it.id == swid } ) { swtype= "other" }
     else if ( swid=="m1x1" || swid=="m1x2" || swid=="m2x1" || swid=="m2x2" ) { swtype= "mode" }
+    else if ( swid=="b1x1" || swid=="b1x2" || swid=="b2x1" || swid=="b2x2" ) { swtype= "blank" }
+    else if ( swid=="img1" || swid=="img2" || swid=="img3" || swid=="img4" ) { swtype= "image" }
+    else if ( state.usepistons && webCoRE_list().find {it.id == swid} ) { swtype= "piston" }
     else { swtype = "" }
     return swtype
 }
@@ -678,12 +685,10 @@ def doAction() {
     def swattr = params.swattr
     def subid = params.subid
     def cmdresult = false
-    // sendLocationEvent( [name: "housepanel", value: "touch", isStateChange:true, displayed:true, data: [id: swid, type: swtype, attr: swattr, cmd: cmd] ] )
-
     log.debug "doaction params: cmd = $cmd type = $swtype id = $swid subid = $subid"
 
     // get the type if auto is set
-    if (swtype=="auto" || swtype=="none" || swtype=="") {
+    if ( (swtype=="auto" || swtype=="none" || swtype=="") && swid ) {
         swtype = autoType(swid)
     }
 
@@ -721,8 +726,8 @@ def doAction() {
          break
          
       // note: this requires a special handler for motion to manually set it
+      // to use this make sure you have MotionZwaveManual.groovy installed
       case "motion" :
-        // log.debug "Manually setting motion sensor with id = $swid"
     	cmdresult = setSensor(swid, cmd, swattr)
         break
 
@@ -737,6 +742,13 @@ def doAction() {
       case "door" :
       	 cmdresult = setDoor(swid, cmd, swattr)
          break
+
+      case "piston" :
+         if ( state.usepistons ) {
+             webCoRE_execute(swid)
+             cmdresult = getPiston(swid)
+         }
+         break;
       
       case "routine" :
         cmdresult = setRoutine(swid, cmd, swattr)
@@ -745,15 +757,11 @@ def doAction() {
       case "other" :
           cmdresult = setOther(swid, cmd, swattr, subid)
           break
-        
     }
-   
     log.debug "HousePanel doaction: cmd = $cmd type = $swtype id = $swid subid = $subid cmdresult = $cmdresult"
     return cmdresult
-
 }
 
-// get a tile by the ID not object
 def doQuery() {
     def swid = params.swid
     def swtype = params.swtype
@@ -771,55 +779,42 @@ def doQuery() {
     case "all" :
         cmdresult = getAllThings()
         break
-
     case "switch" :
         cmdresult = swid ? getSwitch(swid) : getSwitches( [] )
         break
-         
     case "bulb" :
         cmdresult = swid ? getBulb(swid) : getBulbs( [] )
         break
-         
     case "light" :
         cmdresult = swid ? getLight(swid) : getLights( [] )
         break
-         
     case "switchlevel" :
         cmdresult = swid ? getDimmer(swid) : getDimmers( [] )
         break
-         
     case "momentary" :
         cmdresult = swid ? getMomentary(swid) : getMomentaries( [] )
         break
-        
     case "motion" :
         cmdresult = swid ? getSensor(swid) : getSensors( [] )
         break
-        
     case "contact" :
         cmdresult = swid ? getContact(swid) : getContacts( [] )
         break
-      
     case "lock" :
         cmdresult = swid ? getLock(swid) : getLocks( [] )
         break
-         
     case "thermostat" :
         cmdresult = swid ? getThermostat(swid) : getThermostats( [] )
         break
-         
     case "music" :
         cmdresult = swid ? getMusic(swid) : getMusics( [] )
         break
-        
     case "presence" :
         cmdresult = swid ? getPresence(swid) : getPresences( [] )
         break
-         
     case "water" :
         cmdresult = swid ? getWater(swid) : getWaters( [] )
         break
-         
     case "valve" :
         cmdresult = swid ? getValve(swid) : getValves( [] )
         break
@@ -849,8 +844,6 @@ def doQuery() {
         break
 
     }
-   
-    // log.debug "getTile: type = $swtype id = $swid cmdresult = $cmdresult"
     return cmdresult
 }
 
@@ -869,7 +862,6 @@ def setOnOff(items, itemtype, swid, cmd, swattr) {
         newonoff=="on" ? item.on() : item.off()
     }
     return newonoff
-    
 }
 
 def setSwitch(swid, cmd, swattr) {
@@ -913,23 +905,21 @@ def setSensor(swid, cmd, swattr) {
             newsw = "inactive"
         }
         resp = [motion: newsw]
+        if ( item.hasCapability("Battery") ) {
+            resp.put("battery", item.currentValue("battery"))
+        }
     }
     return resp
-    
 }
 
 // replaced this code to treat bulbs as Hue lights with color controls
 def setBulb(swid, cmd, swattr) {
-    // def onoff = setOnOff(mybulbs, "bulb", swid,cmd,swattr)
     def resp = setGenericLight(mybulbs, swid, cmd, swattr)
-    
     return resp
 }
 
 // changed these to just return values of entire tile
 def setLight(swid, cmd, swattr) {
-    // def onoff = setOnOff(mylights, "light", swid,cmd,swattr)
-    // def resp = onoff ? [light: onoff] : false
     def resp = setGenericLight(mylights, swid, cmd, swattr)
     return resp
 }
@@ -1175,8 +1165,6 @@ def setGenericLight(mythings, swid, cmd, swattr) {
         if ( hue ) { resp.put("hue", hue) }
         if ( saturation ) { resp.put("saturation", saturation) }
         if ( temperature ) { resp.put("colorTemperature", temperature) }
-        
-        // resp = [name: item.displayName, value: newsw, id: swid, type: swtype]
     }
 
     return resp
@@ -1218,35 +1206,45 @@ def hsv2rgb(h, s, v) {
 
 def setMomentary(swid, cmd, swattr) {
     def resp = false
-
     def item  = mymomentaries.find {it.id == swid }
     if (item) {
-          // log.debug "setMomentary command = $cmd for id = $swid"
-        def newsw = item.currentSwitch
         item.push()
         resp = getMomentary(swid, item)
-        // resp = [name: item.displayName, value: item.currentSwitch, id: swid, type: swtype]
     }
     return resp
-
 }
 
 def setLock(swid, cmd, swattr) {
     def resp = false
     def newsw
     def item  = mylocks.find {it.id == swid }
+    
+    log.debug "Performing setLock command with cmd = ${cmd} and swattr = ${swattr}"
     if (item) {
-        if (cmd!="lock" && cmd!="unlock") {
-            cmd = item.currentLock=="locked" ? "unlock" : "lock"
-        }
-        if (cmd=="unlock") {
+        if (cmd=="toggle") {
+            newsw = item.currentLock=="locked" ? "unlocked" : "locked"
+            if ( newsw=="locked" ) {
+               item.lock()
+            } else {
+               item.unlock()
+            }
+        } else if ( cmd=="unknown" ) {
+            newsw = item.currentLock
+    	    log.debug "Ignoring unknown status..."
+        } else if ( cmd=="move" ) {
+            newsw = item.currentLock
+    	    log.debug "Ignoring move command for lock..."
+        } else if (cmd=="unlock") {
             item.unlock()
             newsw = "unlocked"
-        } else {
+        } else if (cmd=="lock") {
             item.lock()
             newsw = "locked"
         }
         resp = [lock: newsw]
+        if ( item.hasCapability("Battery") ) {
+            resp.put("battery", item.currentValue("battery"))
+        }
     }
     return resp
 
@@ -1280,8 +1278,6 @@ def setThermostat(swid, curtemp, swattr, subid) {
 
     def item  = mythermostats.find {it.id == swid }
     if (item) {
-//          log.debug "setThermostat attr = $swattr for id = $swid curtemp = $curtemp"
-        
           resp = getThermostat(swid, item)
           // switch (swattr) {
           // case "heat-up":
@@ -1381,7 +1377,7 @@ def setThermostat(swid, curtemp, swattr, subid) {
               // break
           }
           
-          // case "thermostat thermofan fanAuto":
+          // case "thermostat thermofan circulate":
           else if ( swattr.contains("thermofan") && swattr.endsWith("circulate")) {
               item.fanOn()
               newsw = "on"
@@ -1420,7 +1416,6 @@ def setMusic(swid, cmd, swattr, subid) {
     def item  = mymusics.find {it.id == swid }
     def newsw
     if (item) {
-//        log.debug "music command = $cmd for id = $swid swattr = $swattr"
         resp = getMusic(swid, item)
         
         // fix old bug from addition of extra class stuff
@@ -1488,7 +1483,6 @@ def setMusic(swid, cmd, swattr, subid) {
                       break
             }
         }
-         // resp = [name: item.displayName, value: newsw, id: swid, type: swtype]
     }
     return resp
 }
@@ -1500,3 +1494,41 @@ def setRoutine(swid, cmd, swattr) {
     }
     return routine
 }
+
+/*************************************************************************/
+/* webCoRE Connector v0.2                                                */
+/*************************************************************************/
+/*  Copyright 2016 Adrian Caramaliu <ady624(at)gmail.com>                */
+/*                                                                       */
+/*  This program is free software: you can redistribute it and/or modify */
+/*  it under the terms of the GNU General Public License as published by */
+/*  the Free Software Foundation, either version 3 of the License, or    */
+/*  (at your option) any later version.                                  */
+/*                                                                       */
+/*  This program is distributed in the hope that it will be useful,      */
+/*  but WITHOUT ANY WARRANTY; without even the implied warranty of       */
+/*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the         */
+/*  GNU General Public License for more details.                         */
+/*                                                                       */
+/*  You should have received a copy of the GNU General Public License    */
+/*  along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+/*************************************************************************/
+private webCoRE_handle(){return'webCoRE'}
+private webCoRE_init(pistonExecutedCbk)
+{
+    state.webCoRE=(state.webCoRE instanceof Map?state.webCoRE:[:])+(pistonExecutedCbk?[cbk:pistonExecutedCbk]:[:]);
+    subscribe(location,"${webCoRE_handle()}.pistonList",webCoRE_handler);
+    if(pistonExecutedCbk)subscribe(location,"${webCoRE_handle()}.pistonExecuted",webCoRE_handler);webCoRE_poll();
+}
+private webCoRE_poll(){sendLocationEvent([name: webCoRE_handle(),value:'poll',isStateChange:true,displayed:false])}
+public  webCoRE_execute(pistonIdOrName,Map data=[:]){def i=(state.webCoRE?.pistons?:[]).find{(it.name==pistonIdOrName)||(it.id==pistonIdOrName)}?.id;if(i){sendLocationEvent([name:i,value:app.label,isStateChange:true,displayed:false,data:data])}}
+public  webCoRE_list(mode)
+{
+	def p=state.webCoRE?.pistons;
+    if(p)p.collect{
+		mode=='id'?it.id:(mode=='name'?it.name:[id:it.id,name:it.name])
+        // log.debug "Reading piston: ${it}"
+	}
+    return p
+}
+public  webCoRE_handler(evt){switch(evt.value){case 'pistonList':List p=state.webCoRE?.pistons?:[];Map d=evt.jsonData?:[:];if(d.id&&d.pistons&&(d.pistons instanceof List)){p.removeAll{it.iid==d.id};p+=d.pistons.collect{[iid:d.id]+it}.sort{it.name};state.webCoRE = [updated:now(),pistons:p];};break;case 'pistonExecuted':def cbk=state.webCoRE?.cbk;if(cbk&&evt.jsonData)"$cbk"(evt.jsonData);break;}}
