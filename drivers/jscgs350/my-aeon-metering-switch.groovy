@@ -67,14 +67,13 @@ metadata {
     preferences {
         input "disableOnOff", "bool", title: "Disable On/Off switch?", defaultValue: false, displayDuringSetup: true
         input "debugOutput", "bool", title: "Enable debug logging?", defaultValue: false, displayDuringSetup: true
-        input "displayEvents", "bool", title: "Display all events in the Recently tab and the device's event log?", defaultValue: false, required: false, displayDuringSetup: true
+        input "txtEnable", "bool", title: "Enable descriptionText logging", defaultValue: true
         input "kWhCost", "string", title: "Enter your cost per kWh (or just use the default, or use 0 to not calculate):", defaultValue: 0.16, required: false, displayDuringSetup: true            
         input "reportType", "number", title: "ReportType: Send watts/kWh data on a time interval (0), or on a change in wattage (1)? Enter a 0 or 1:", defaultValue: 1, range: "0..1", required: false, displayDuringSetup: true
         input "wattsChanged", "number", title: "For ReportType = 1, Don't send unless watts have changed by this many watts: (range 0 - 32,000W)", defaultValue: 50, range: "0..32000", required: false, displayDuringSetup: true
         input "wattsPercent", "number", title: "For ReportType = 1, Don't send unless watts have changed by this percent: (range 0 - 99%)", defaultValue: 10, range: "0..99", required: false, displayDuringSetup: true
         input "secondsWatts", "number", title: "For ReportType = 0, Send Watts data every how many seconds? (range 0 - 65,000 seconds)", defaultValue: 10, range: "0..65000", required: false, displayDuringSetup: true
         input "secondsKwh", "number", title: "For ReportType = 0, Send kWh data every how many seconds? (range 0 - 65,000 seconds)", defaultValue: 60, range: "0..65000", required: false, displayDuringSetup: true 
-        input "decimalPositions", "number", title: "How many decimal positions do you want watts AND kWh to display? (range 0 - 3)", defaultValue: 3, range: "0..3", required: false, displayDuringSetup: true
     }
 
 	tiles(scale: 2) {
@@ -115,17 +114,13 @@ metadata {
 }
 
 def updated() {
-	// Device-Watch simply pings if no device events received for 32min(checkInterval)
 	sendEvent(name: "checkInterval", value: 2 * 15 * 60 + 2 * 60, displayed: false, data: [protocol: "zwave", hubHardwareId: device.hub.hardwareID])
-    state.onOffDisabled = ("true" == disableOnOff)
-    state.debug = ("true" == debugOutput)
-    state.displayDisabled = ("true" == displayEvents)
-    log.debug "updated(disableOnOff: ${disableOnOff}(${state.onOffDisabled}), debugOutput: ${debugOutput}(${state.debug}), reportType: ${reportType}, wattsChanged: ${wattsChanged}, wattsPercent: ${wattsPercent}, secondsWatts: ${secondsWatts}, secondsKwh: ${secondsKwh}, decimalPositions: ${decimalPositions})"
+    if (debugOutput) log.debug "updated(disableOnOff: ${disableOnOff}, debugOutput: ${debugOutput}, reportType: ${reportType}, wattsChanged: ${wattsChanged}, wattsPercent: ${wattsPercent}, secondsWatts: ${secondsWatts}, secondsKwh: ${secondsKwh})"
     response(configure())
 }
 
 def parse(String description) {
-	if (state.debug) log.debug "Incoming to parse: ${description}"
+	if (debugOutput) log.debug "parse: ${description}"
 	def result = null
 	def cmd = zwave.parse(description, [0x20: 1, 0x32: 1])
 	if (cmd) {
@@ -135,45 +130,33 @@ def parse(String description) {
 }
 
 def zwaveEvent(hubitat.zwave.commands.meterv1.MeterReport cmd) {
-    def dispValue
-	def timeString = new Date().format("MM-dd-yy h:mm a", location.timeZone)
+    if (debugOutput) log.debug "zwaveEvent received ${cmd}"
+    def name, value, unit, descriptionText
     if (cmd.scale == 0) {
-        if (cmd.scaledMeterValue != state.energyValue) {
-            state.energyValue = cmd.scaledMeterValue
-            if (decimalPositions == 2) {
-                dispValue = String.format("%3.2f",cmd.scaledMeterValue)
-            } else if (decimalPositions == 1) {
-                dispValue = String.format("%3.1f",cmd.scaledMeterValue)
-            } else if (decimalPositions == 0) {
-                dispValue = Math.round(cmd.scaledMeterValue)
-            } else {
-                dispValue = String.format("%3.3f",cmd.scaledMeterValue)
-            }
-            BigDecimal costDecimal = cmd.scaledMeterValue * (kWhCost as BigDecimal)
+        value = String.format("%3.2f", cmd.scaledMeterValue)
+        if (value != state.energyValue) {
+            state.energyValue = value
+            BigDecimal costDecimal = cmd.scaledMeterValue * (kWhCost as BigDecimal ?: 0.12)
             def costDisplay = "\$"
             costDisplay += String.format("%3.2f",costDecimal)
             sendEvent(name: "kwhCosts", value: costDisplay as String, unit: "", displayed: false)
-            if (state.displayDisabled) {
-                sendEvent(name: "energy", value: dispValue, unit: "kWh", displayed: true)
-            } else {
-            	sendEvent(name: "energy", value: dispValue, unit: "kWh", displayed: false)
-            }
+            name = "energy"
+            unit = "kWh"
+            descriptionText = "Energy is ${value} ${unit}"
         }
-    } else if (cmd.scale==2) {
+    } 
+    
+    if (cmd.scale == 2) {
         if (cmd.scaledMeterValue < 2000) {
-            if (cmd.scaledMeterValue != state.powerValue) {
-                state.powerValue = cmd.scaledMeterValue
-                if (decimalPositions == 2) {
-                    dispValue = String.format("%3.2f",cmd.scaledMeterValue)
-                } else if (decimalPositions == 1) {
-                    dispValue = String.format("%3.1f",cmd.scaledMeterValue)
-                } else if (decimalPositions == 0) {
-                    dispValue = Math.round(cmd.scaledMeterValue)
-                } else {
-                    dispValue = String.format("%3.3f",cmd.scaledMeterValue)
-                }
+            value = Math.round(cmd.scaledMeterValue)
+            if (value != state.powerValue) {
+                state.powerValue = value
+                name = "power"
+                unit = "watts"
+                descriptionText = "Power is ${value} ${unit}"
+            	def timeString = new Date().format("MM-dd-yy h:mm a", location.timeZone)
                 if (cmd.scaledMeterValue < state.powerLowVal) {
-                    def dispLowValue = dispValue+" watts on "+timeString
+                    def dispLowValue = value+" watts on "+timeString
                     sendEvent(name: "powerLow", value: dispLowValue as String, unit: "", displayed: false)
                     state.powerLowVal = cmd.scaledMeterValue
                     def historyDisp = ""
@@ -181,30 +164,31 @@ def zwaveEvent(hubitat.zwave.commands.meterv1.MeterReport cmd) {
 					sendEvent(name: "history", value: historyDisp, displayed: false)
                 }
                 if (cmd.scaledMeterValue > state.powerHighVal) {
-                    def dispHighValue = dispValue+" watts on "+timeString
+                    def dispHighValue = value+" watts on "+timeString
                     sendEvent(name: "powerHigh", value: dispHighValue as String, unit: "", displayed: false)
                     state.powerHighVal = cmd.scaledMeterValue
                     def historyDisp = ""
 					historyDisp = "Minimum/Maximum Readings as of ${timeString}\n-------------------------------------------------------------------------\nPower Low : ${device.currentState('powerLow')?.value}\nPower High : ${device.currentState('powerHigh')?.value}"
 					sendEvent(name: "history", value: historyDisp, displayed: false)
                 }
-                if (state.displayDisabled) {
-                	sendEvent(name: "power", value: dispValue, unit: "watts", displayed: true)
-                } else {
-                    sendEvent(name: "power", value: dispValue, unit: "watts", displayed: false)
-                }
             }
         }
+    }
+
+    if (descriptionText)
+    {
+        if (txtEnable) log.info "${descriptionText}"
+        sendEvent(name: name, value: value, unit: unit, displayed: true, descriptionText:descriptionText)
     }
 }
 
 def zwaveEvent(hubitat.zwave.commands.basicv1.BasicReport cmd){
-	if (state.debug) log.debug "${device.label}: $cmd"
+	if (debugOutput) log.debug "${device.label}: $cmd"
 	[name: "switch", value: cmd.value ? "on" : "off", type: "physical"]
 }
 
 def zwaveEvent(hubitat.zwave.commands.switchbinaryv1.SwitchBinaryReport cmd){
-	if (state.debug) log.debug "${device.label}: $cmd"
+	if (debugOutput) log.debug "${device.label}: $cmd"
 	[name: "switch", value: cmd.value ? "on" : "off", type: "digital"]
 }
 
@@ -214,8 +198,8 @@ def zwaveEvent(hubitat.zwave.Command cmd) {
 }
 
 def on() {
-    if (state.onOffDisabled) {
-        if (state.debug) log.debug "On/Off disabled"
+    if (disableOnOff) {
+        if (debugOutput) log.debug "On/Off disabled"
         delayBetween([
             zwave.basicV1.basicGet().format(),
             zwave.switchBinaryV1.switchBinaryGet().format()
@@ -231,8 +215,8 @@ def on() {
 
 
 def off() {
-    if (state.onOffDisabled) {
-        if (state.debug) log.debug "On/Off disabled"
+    if (disableOnOff) {
+        if (debugOutput) log.debug "On/Off disabled"
         delayBetween([
             zwave.basicV1.basicGet().format(),
             zwave.switchBinaryV1.switchBinaryGet().format()
@@ -252,11 +236,11 @@ def poll() {
 
 // PING is used by Device-Watch in attempt to reach the Device
 def ping() {
-	refresh()
+	configure()
 }
 
 def refresh() {
-    if (state.debug) log.debug "${device.name} refresh"
+    if (debugOutput) log.debug "${device.name} refresh"
 	delayBetween([
 		zwave.switchBinaryV1.switchBinaryGet().format(),
 		zwave.meterV2.meterGet(scale: 0).format(),
@@ -265,7 +249,7 @@ def refresh() {
 }
 
 def resetWatts() {
-    if (state.debug) log.debug "${device.label} watts min/max reset"
+    if (debugOutput) log.debug "${device.label} watts min/max reset"
     def historyDisp = ""
     state.powerHighVal = 0
     state.powerLowVal = 999999
@@ -281,7 +265,7 @@ def resetWatts() {
 }
 
 def resetEnergy() {
-    if (state.debug) log.debug "${device.label} reset kWh/Cost values"
+    if (debugOutput) log.debug "${device.label} reset kWh/Cost values"
 	def timeString = new Date().format("MM-dd-yy h:mm a", location.timeZone)
     sendEvent(name: "kwhCosts", value: "(reset)", unit: "", displayed: false)
     sendEvent(name: "energy", value: 0, unit: "kWh", displayed: false)
@@ -294,7 +278,7 @@ def resetEnergy() {
 }
 
 def resetMeter() {
-	log.debug "Resetting all energy meter values..."
+	if (debugOutput) log.debug "Resetting all energy meter values..."
     def resetDisp = ""
     def timeString = new Date().format("MM-dd-yy h:mm a", location.timeZone)
     resetDisp = "kWh value at time of last reset was ${device.currentState('energy')?.value}"
@@ -323,22 +307,22 @@ def resetMeter() {
 }
 
 def configure() {
-    log.debug "${device.name} configuring..."
+    if (debugOutput) log.debug "${device.name} configuring (reportType ${reportType?:1})..."
 	delayBetween([
-        // Send data based on a time interval (0), or based on a change in wattage (1).  0 is default. 1 enables parameters 91 and 92.
-        zwave.configurationV1.configurationSet(parameterNumber: 90, size: 1, scaledConfigurationValue: reportType).format(),
+        // Send data based on a time interval (0), or based on a change in wattage (1).  1 is default. 1 enables parameters 91 and 92.
+        zwave.configurationV1.configurationSet(parameterNumber: 90, size: 1, scaledConfigurationValue: (reportType?:1)).format(),
         // If parameter 90 is 1, don't send unless watts have changed by 50 <default>
-        zwave.configurationV1.configurationSet(parameterNumber: 91, size: 2, scaledConfigurationValue: wattsChanged).format(),
+        zwave.configurationV1.configurationSet(parameterNumber: 91, size: 2, scaledConfigurationValue: (wattsChanged?:50)).format(),
         // If parameter 90 is 1, don't send unless watts have changed by 10% <default>
-        zwave.configurationV1.configurationSet(parameterNumber: 92, size: 1, scaledConfigurationValue: wattsPercent).format(),
+        zwave.configurationV1.configurationSet(parameterNumber: 92, size: 1, scaledConfigurationValue: (wattsPercent?:10)).format(),
         // Defines the type of report sent for Reporting Group 1.  2->MultiSensor Report, 4->Meter Report for Watt, 8->Meter Report for kWh
         zwave.configurationV1.configurationSet(parameterNumber: 101, size: 4, scaledConfigurationValue: 4).format(),
         // If parameter 90 is 0, report every XX Seconds (for Watts) for Reporting Group 1.
-        zwave.configurationV1.configurationSet(parameterNumber: 111, size: 4, scaledConfigurationValue: secondsWatts).format(),
+        zwave.configurationV1.configurationSet(parameterNumber: 111, size: 4, scaledConfigurationValue: (secondsWatts?:10)).format(),
         // Defines the type of report sent for Reporting Group 2.  2->MultiSensor Report, 4->Meter Report for Watt, 8->Meter Report for kWh
         zwave.configurationV1.configurationSet(parameterNumber: 102, size: 4, scaledConfigurationValue: 8).format(),
         // If parameter 90 is 0, report every XX seconds (for kWh) for Reporting Group 2.
-        zwave.configurationV1.configurationSet(parameterNumber: 112, size: 4, scaledConfigurationValue: secondsKwh).format(),
+        zwave.configurationV1.configurationSet(parameterNumber: 112, size: 4, scaledConfigurationValue: (secondsKwh?:60)).format(),
         // Disable Reporting Group 3 parameters
         zwave.configurationV1.configurationSet(parameterNumber: 103, size: 4, scaledConfigurationValue: 0).format(),
         zwave.configurationV1.configurationSet(parameterNumber: 113, size: 4, scaledConfigurationValue: 0).format()
