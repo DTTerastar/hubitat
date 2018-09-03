@@ -219,7 +219,7 @@ async function createRemoteResource(
 
   const hash = hashSource(source);
   console.log(chalk.green(`Creating ${type} ${filename}...`));
-  const newRes = await postResource(type, source);
+  const newRes = await saveResource(type, source);
   let newEntry: ManifestEntry;
 
   if (isGithubResource) {
@@ -235,7 +235,8 @@ async function createRemoteResource(
     newEntry = {
       hash,
       filename: getFilename(resource),
-      ...newRes
+      id: newRes.id,
+      version: newRes.version
     };
   }
 
@@ -340,8 +341,8 @@ async function updateRemoteResource(
   localManifest: Manifest,
   remoteManifest: Manifest
 ): Promise<boolean> {
-  const localRes = localManifest[type][id];
-  const remoteRes = remoteManifest[type][id];
+  const localRes = localManifest[type][id]||{};
+  const remoteRes = remoteManifest[type][id]||{};
   const filename = localRes.filename;
   let source: string;
 
@@ -368,7 +369,7 @@ async function updateRemoteResource(
       return true;
     }
 
-    if (localRes.version !== remoteRes.version) {
+    if (localRes.version !== remoteRes.version && remoteRes.version) {
       console.log(chalk.red(`${type} ${filename} is out of date; pull first`));
       return false;
     }
@@ -379,7 +380,8 @@ async function updateRemoteResource(
     }
 
     console.log(chalk.green(`Pushing ${type} ${filename}...`));
-    const res = await putResource(type, id, localRes.version, source);
+    const res = await (remoteRes.version ? updateResource(type, id, localRes.version, source) : saveResource(type, source));
+    
     if (res.status === 'error') {
       console.error(
         chalk.red(`Error pushing ${type} ${filename}: ${trim(res.errorMessage)}`)
@@ -484,10 +486,10 @@ async function getResource(
 /**
  * Create a specific resource (driver or app)
  */
-async function postResource(
+async function saveResource(
   type: ResourceType,
   source: string
-): Promise<CreateResource> {
+): Promise<ResponseResource> {
   const url = `http://${hubitatHost}/${type}/save`;
   const response = await fetch(url, {
     method: 'POST',
@@ -517,14 +519,17 @@ async function postResource(
 
   return {
     id: Number(id),
-    version: Number(version)
+    version: Number(version),
+    source: source,
+    status: "created",
+    errorMessage: ""
   };
 }
 
 /**
  * Store a specific resource (driver or app)
  */
-async function putResource(
+async function updateResource(
   type: ResourceType,
   id: number,
   version: number,
@@ -621,11 +626,6 @@ interface ManifestEntry {
 }
 
 type CodeResourceType = 'app' | 'driver';
-
-interface CreateResource {
-  id: number;
-  version: number;
-}
 
 interface ResponseResource {
   id: number;

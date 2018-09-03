@@ -449,8 +449,14 @@ def handleEvent(evt) {
         valueBinary = ('touched' == evt.value) ? '1i' : '0i'
         data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
     }
-    else if ('trackDescription' == evt.name) { // thermostatSetpointMode: Calculate a binary value (followSchedule = 0, <any other value> = 1)
+    else if ('trackDescription' == evt.name) { // thermostatSetpointMode: Calculate a binary value ('' = 0, <any other value> = 1)
         unit = 'trackDescription'
+        value = '"' + value + '"'
+        valueBinary = ('' == evt.value) ? '0i' : '1i'
+        data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
+    }
+    else if ('color' == evt.name) { // color: Calculate a binary value ('' = 0, <any other value> = 1)
+        unit = 'color'
         value = '"' + value + '"'
         valueBinary = ('' == evt.value) ? '0i' : '1i'
         data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"

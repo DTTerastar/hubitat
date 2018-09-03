@@ -1420,7 +1420,7 @@ private Boolean executeTask(rtData, devices, statement, task, async) {
  	def vcmd = rtData.commands.virtual[command]
     long delay = 0
     for (device in (virtualDevice ? [virtualDevice] : devices)) {
-        if (!virtualDevice && device.hasCommand(command) && !(vcmd && vcmd.o /*virutal command overrides physical command*/)) {
+        if (!virtualDevice && device?.hasCommand(command) && !(vcmd && vcmd.o /*virtual command overrides physical command*/)) {
             def msg = timer "Executed [$device].${command}"
         	try {
             	delay = "cmd_${command}"(rtData, device, params)
