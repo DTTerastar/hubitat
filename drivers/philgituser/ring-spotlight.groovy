@@ -48,10 +48,33 @@ def authenticate()
     
     def token = "EMPTY"
     def params = [
+    	uri: "https://oauth.ring.com",
+    	path: "/oauth/token",
+        headers: [
+            "User-Agent": "iOS"
+    	],
+        requestContentType: "application/json",
+        body: "{\"client_id\": \"ring_official_ios\",\"grant_type\": \"password\",\"password\": \"${password}\",\"scope\": \"client\",\"username\": \"${username}\"}"
+	]
+    try {
+        httpPost(params) { resp ->
+            log.debug "POST response code: ${resp.status}"
+            
+            log.debug "response data: ${resp.data}"
+            token = resp.data.access_token
+        }
+    } catch (e) {
+        log.error "HTTP Exception Received on POST: $e"
+        log.error "response data: ${resp.data}"
+        return
+        
+    }
+    
+    params = [
     	uri: "https://api.ring.com",
     	path: "/clients_api/session",
         headers: [
-        	Authorization: "Basic ${encodedUandP}",
+        	Authorization: "Bearer ${token}",
             "User-Agent": "iOS"
     	],
         requestContentType: "application/x-www-form-urlencoded",
