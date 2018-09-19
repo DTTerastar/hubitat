@@ -24,6 +24,14 @@ export default function init(context: Context) {
       const ws = new WebSocket(`ws://${hubitatHost}/logsocket`);
       const entities = new XmlEntities();
 
+      ws.on('close', () => {
+        console.log('Closed connection to Hubitat');
+      });
+
+      ws.on('connectFailed', function(error) {
+        console.log('Connect Error: ' + error.toString());
+      });
+
       ws.on('open', () => {
         console.log('Opened connection to Hubitat');
       });
@@ -41,7 +49,8 @@ export default function init(context: Context) {
     });
 }
 
-function color(level: string){
+function color(level: string)
+{
   switch(level){
     case "info":return chalk.yellow;
     case "debug":return chalk.blueBright;

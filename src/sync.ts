@@ -346,6 +346,9 @@ async function updateRemoteResource(
   const filename = localRes.filename;
   let source: string;
 
+  console.log(chalk.green(`Checking ${type} ${id}...`));
+
+
   try {
     if (filename.indexOf(repoDir) === 0) {
       const repo = join(...filename.split('/').slice(0, 3));
@@ -360,6 +363,12 @@ async function updateRemoteResource(
       source = readFileSync(join(resourceDirs[type], filename), {
         encoding: 'utf8'
       });
+    }
+
+    if (!remoteRes.version){
+      console.log(`Remote deleted removing from manifest`);
+      delete localManifest[type][id];
+      return false;
     }
 
     const hash = hashSource(source);
@@ -380,7 +389,7 @@ async function updateRemoteResource(
     }
 
     console.log(chalk.green(`Pushing ${type} ${filename}...`));
-    const res = await (remoteRes.version ? updateResource(type, id, localRes.version, source) : saveResource(type, source));
+    const res = await updateResource(type, id, localRes.version, source);
     
     if (res.status === 'error') {
       console.error(
