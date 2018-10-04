@@ -3,7 +3,7 @@
 This repository contains the local drivers and apps that are currently loaded
 onto my Hubitat.
 
-Sme of the pps and drivers are my own, some are from other sources, and a few are
+Some of the pps and drivers are my own, some are from other sources, and a few are
 ones from other sources that I cleaned up and/or modified.
 
 ## Hubitat script
