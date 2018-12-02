@@ -45,6 +45,8 @@ metadata {
 			required: true,
 			displayDuringSetup: true
 		)
+
+		input "debugOutput", "bool", title: "Enable debug logging?", defaultValue: true, displayDuringSetup: false, required: false
 	}
 
 	simulator {}
@@ -63,7 +65,7 @@ def setNetworkAddress() {
 	def hex = "$settings.mac".toUpperCase().replaceAll(':', '')
 	if (device.deviceNetworkId != "$hex") {
 		device.deviceNetworkId = "$hex"
-		log.debug "Device Network Id set to ${device.deviceNetworkId}"
+		logDebug "Device Network Id set to ${device.deviceNetworkId}"
 	}
 }
 
@@ -71,7 +73,7 @@ def setNetworkAddress() {
 def parse(String description) {
 	setNetworkAddress()
 
-	//log.debug "Parsing '${description}'"
+	//logDebug "Parsing '${description}'"
 	def msg = parseLanMessage(description)
 
 	return createEvent(name: "message", value: new JsonOutput().toJson(msg.data))
@@ -84,7 +86,7 @@ def deviceNotification(message) {
 		return
 	}
 
-	log.debug "Sending '${message}' to device"
+	logDebug "Sending '${message}' to device"
 	setNetworkAddress()
 
 	def slurper = new JsonSlurper()
@@ -95,7 +97,7 @@ def deviceNotification(message) {
 	}
 
 	def headers = [:]
-	headers.put("HOST", "$ip:$port")
+	headers.put("Host", "$ip:$port")
 	headers.put("Content-Type", "application/json")
 
 	def hubAction = new hubitat.device.HubAction(
@@ -105,4 +107,10 @@ def deviceNotification(message) {
 		body: parsed.body
 	)
 	hubAction
+}
+
+private logDebug(msg) {
+	if (settings?.debugOutput) {
+		log.debug msg
+	}
 }
