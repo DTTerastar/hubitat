@@ -46,6 +46,7 @@ preferences {
 
 	section ("Bridge") {
 		input "bridge", "capability.notification", title: "Notify this Bridge", required: true, multiple: false
+		input "debugOutput", "bool", title: "Enable debug logging?", defaultValue: true, displayDuringSetup: false, required: false		
 	}
 }
 
@@ -912,14 +913,20 @@ preferences {
 ]
 
 def installed() {
-	log.debug "Installed with settings: ${settings}"
+	logDebug "Installed with settings: ${settings}"
 
 	runEvery15Minutes(initialize)
 	initialize()
 }
 
+private logDebug(msg) {
+	if (settings?.debugOutput) {
+		log.debug msg
+	}
+}
+
 def updated() {
-	log.debug "Updated with settings: ${settings}"
+	logDebug "Updated with settings: ${settings}"
 
 	// Unsubscribe from all events
 	unsubscribe()
@@ -980,7 +987,7 @@ def updateSubscription() {
 		]
 	])
 
-	log.debug "Updating subscription: ${json}"
+	logDebug "Updating subscription: ${json}"
 
 	bridge.deviceNotification(json)
 }
@@ -988,7 +995,7 @@ def updateSubscription() {
 // Receive an event from the bridge
 def bridgeHandler(evt) {
 	def json = new JsonSlurper().parseText(evt.value)
-	log.debug "Received device event from bridge: ${json}"
+	logDebug "Received device event from bridge: ${json}"
 
 	if (json.type == "notify") {
 		if (json.name == "Contacts") {
@@ -1014,7 +1021,7 @@ def bridgeHandler(evt) {
 
 					if (json.command == false) {
 						if (device.getSupportedCommands().any {it.name == "setStatus"}) {
-							log.debug "Setting state ${json.type} = ${json.value}"
+							logDebug "Setting state ${json.type} = ${json.value}"
 							device.setStatus(json.type, json.value)
 							state.ignoreEvent = json;
 						}
@@ -1039,7 +1046,7 @@ def inputHandler(evt) {
 		&& state.ignoreEvent.type == evt.name
 		&& state.ignoreEvent.value == evt.value
 	) {
-		log.debug "Ignoring event ${state.ignoreEvent}"
+		logDebug "Ignoring event ${state.ignoreEvent}"
 		state.ignoreEvent = false;
 	}
 	else {
@@ -1052,7 +1059,7 @@ def inputHandler(evt) {
 			]
 		])
 
-		log.debug "Forwarding device event to bridge: ${json}"
+		logDebug "Forwarding device event to bridge: ${json}"
 		bridge.deviceNotification(json)
 	}
 }
