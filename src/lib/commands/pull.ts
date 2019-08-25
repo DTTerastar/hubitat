@@ -1,3 +1,6 @@
+import path = require('path');
+import fs = require('fs');
+
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { basename, join } from 'path';
 import { execSync } from 'child_process';
@@ -102,14 +105,14 @@ async function updateLocalResource(
   remoteManifest: Manifest
 ): Promise<boolean> {
   const resource = await getResource(type, id);
-  const localRes = localManifest[type][resource.id];
+  const localRes = localManifest[type][resource.id]||{};
 
   if (!localRes) {
     console.log(`No local resource for ${type} ${resource.id}`);
     return false;
   }
 
-  if (localRes.filename.indexOf(repoDir) === 0) {
+  if (localRes.filename && localRes.filename.indexOf(repoDir) === 0) {
     console.log(`Skipping github resource ${basename(localRes.filename)}`);
     return false;
   }
@@ -117,7 +120,8 @@ async function updateLocalResource(
   const remoteRes = remoteManifest[type][resource.id];
   const filename = join(resourceDirs[type], remoteRes.filename);
 
-  if (localRes) {
+  if (localRes && localRes.filename) {
+    try{
     const source = readFileSync(filename, { encoding: 'utf8' });
     const sourceHash = hashSource(source);
     // If the local has changed from the last time it was synced with Hubitat
@@ -125,6 +129,11 @@ async function updateLocalResource(
     if (sourceHash !== localRes.hash && needsCommit(filename)) {
       console.log(`Skipping ${filename}; please commit first`);
       return false;
+    }
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
+      console.log(`No local script ${filename}, removing from manifest`);
+      delete localManifest[type][id];
     }
   }
 
@@ -134,7 +143,10 @@ async function updateLocalResource(
   }
 
   console.log(`Updating ${type} ${filename}`);
-  writeFileSync(join(resourceDirs[type], remoteRes.filename), resource.source);
+
+  var path = join(resourceDirs[type], remoteRes.filename);
+  ensureDirectoryExistence(path)
+  writeFileSync(path, resource.source);
 
   const hash = hashSource(resource.source);
   const newResource = { type, hash, filename: remoteRes.filename, ...resource };
@@ -163,6 +175,16 @@ function validateCodeType(type: string): CodeResourceType {
 
   die(`Invalid type "${type}"`);
   return <CodeResourceType>'';
+}
+
+function ensureDirectoryExistence(filePath: string):boolean {
+  var dirname = path.dirname(filePath);
+  if (fs.existsSync(dirname)) {
+    return true;
+  }
+  ensureDirectoryExistence(dirname);
+  fs.mkdirSync(dirname);
+  return false;
 }
 
 type CodeResourceType = 'app' | 'driver';

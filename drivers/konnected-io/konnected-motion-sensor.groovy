@@ -26,16 +26,6 @@ metadata {
       description: "Most motion sensors are Normally Closed (NC), meaning that the circuit opens when motion is detected. To reverse this logic, select Normally Open (NO)."
   }
 
-  tiles {
-    multiAttributeTile(name:"main", type: "generic", width: 6, height: 4, canChangeIcon: true) {
-      tileAttribute ("device.motion", key: "PRIMARY_CONTROL") {
-        attributeState ("inactive", label: "No Motion", icon:"st.motion.motion.inactive", backgroundColor:"#ffffff")
-        attributeState ("active",   label: "Motion",    icon:"st.motion.motion.active",   backgroundColor:"#00a0dc")
-      }
-    }
-    main "main"
-    details "main"
-  }
 }
 
 def isClosed() {
@@ -50,5 +40,5 @@ def isOpen() {
 def setStatus(state) {
   def stateValue = state == "1" ? isOpen() : isClosed()
   sendEvent(name: "motion", value: stateValue)
-  log.debug "$device.label is $stateValue"
+  log.info "$device.label is $stateValue"
 }

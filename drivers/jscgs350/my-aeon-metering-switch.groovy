@@ -147,8 +147,8 @@ def zwaveEvent(hubitat.zwave.commands.meterv1.MeterReport cmd) {
     } 
     
     if (cmd.scale == 2) {
-        if (cmd.scaledMeterValue < 2000) {
-            value = Math.round(cmd.scaledMeterValue)
+		value = Math.round(cmd.scaledMeterValue)
+        if (value < 800) {
             if (value != state.powerValue) {
                 state.powerValue = value
                 name = "power"

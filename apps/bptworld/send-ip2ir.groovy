@@ -33,21 +33,29 @@
  *
  *  If modifying this project, please keep the above header intact and add your comments/credits below - Thank you! -  @BPTWorld
  *
- *  App and Driver updates can be found at https://github.com/bptworld/Hubitat/tree/master/Send%20IP2IR
+ *  App and Driver updates can be found at https://github.com/bptworld/Hubitat
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *
  *  Changes:
  *
- *  
+ *  V1.1.7 - 01/15/19 - Updated footer with update check and links
+ *  V1.1.6 - 12/30/18 - Updated to my new color theme.
+ *  V1.1.5 - 12/06/18 - Code cleanup, removal of IP Address from Child Apps as it was not needed anymore. 
+ *  V1.1.4 - 11/30/18 - Added pause button to child apps. Added an Enable/Disable by switch option. Cleaned up code.
+ *  V1.1.3 - 11/02/18 - Added the ability to send multiple Switch On's, Off's or both and Button's to send mutilple times with
+ *                      each push. Also Fixed some typo's.
+ *  V1.1.2 - 11/01/18 - Added an optional Digit 4 within Channels. Sending Enter Code after Digits is now optional. Made the
+ *                      Delay between sending digits user specified and added in some instructions.
+ *  V1.1.1 - 10/29/18 - Updated Channels to be either a Button or a Switch, only Switches can be used with Google Assistant.  
  *  V1.1.0 - 10/20/18 - Big change in how Channels work. Only have to enter each digits IR code once, in the Advance Section of
- *			the Parent app. Now in the Child apps, only need to put in the digits (no IR codes!). This is a 
- *			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for showing
- *			me how to send code from parent to child apps.
+ *			 			the Parent app. Now in the Child apps, only need to put in the digits (no IR codes!). This is a 
+ *			 			non-destructive update. All existing channels will still work. Thanks to Bruce (@bravenel) for showing
+ *						me how to send code from parent to child apps.
  *  V1.0.0 - 10/15/18 - Initial release
  */
 
-
+def version(){"v1.1.7"}
 
 definition(
     name:"Send IP2IR",
@@ -76,40 +84,6 @@ def updated() {
 }
 
 def initialize() {
-    if(msgDigit1) childApps.each { child ->
-		child.myMsgDigit1(msgDigit1)
-	}
-    if(msgDigit2) childApps.each { child ->
-		child.myMsgDigit2(msgDigit2)
-	}
-    if(msgDigit3) childApps.each { child ->
-		child.myMsgDigit3(msgDigit3)
-	}
-    if(msgDigit4) childApps.each { child ->
-		child.myMsgDigit4(msgDigit4)
-	}
-    if(msgDigit5) childApps.each { child ->
-		child.myMsgDigit5(msgDigit5)
-	}
-    if(msgDigit6) childApps.each { child ->
-		child.myMsgDigit6(msgDigit6)
-	}
-    if(msgDigit7) childApps.each { child ->
-		child.myMsgDigit7(msgDigit7)
-	}
-    if(msgDigit8) childApps.each { child ->
-		child.myMsgDigit8(msgDigit8)
-	}
-    if(msgDigit9) childApps.each { child ->
-		child.myMsgDigit9(msgDigit9)
-	}
-    if(msgDigit0) childApps.each { child ->
-		child.myMsgDigit0(msgDigit0)
-	}
-    if(msgDigitE) childApps.each { child ->
-		child.myMsgDigitE(msgDigitE)
-	}
-    
     log.info "There are ${childApps.size()} child apps"
     childApps.each {child ->
     log.info "Child app: ${child.label}"
@@ -120,19 +94,29 @@ def initialize() {
 def mainPage() {
     dynamicPage(name: "mainPage") {
     	installCheck()
-        
 		if(state.appInstalled == 'COMPLETE'){
-			display()
-				section("This app is designed to send commands to an iTach IP2IR device.") {}
-            	section("Be sure to enter in the Preset Values in Advanced Config before creating Child Apps") {}
-  				section("Child Apps", hideable: true, hidden: true){
-					app(name: "anyOpenApp", appName: "Send IP2IR Child", namespace: "BPTWorld", title: "<b>Add a new 'Send IP2IR'</b>", multiple: true)
-  			    }
-   				 section(" "){}
- 			 	section("App Name"){
-       				label title: "Enter a name for parent app (optional)", required: false
- 				}  
-            	section("Be sure to enter in the Preset Values in Advanced Config before creating Child Apps") {}
+			section(getFormat("title", "${app.label}")) {
+				paragraph "<div style='color:#1A77C9'>This app is designed to send commands to an iTach IP2IR device.<br>Be sure to enter in the Preset Values in Advanced Config before creating Child Apps</div>"
+				paragraph getFormat("line")
+			}
+			section("Instructions:", hideable: true, hidden: true) {
+				paragraph "There are 4 types of Triggers that can be made."
+        		paragraph "<b>Switch:</b><br>To turn anything on/off. ie. Television, Stereo, Cable Box, etc. Remember, it's okay to put the same code in box on and off if necessary."
+    			paragraph "<b>Button:</b><br>Used to send one command. ie. Volume Up, Channel Down, etc. Note: this can not be used with Google Assistant."
+        		paragraph "<b>Channel_Switch:</b><br>Used to send 1 to 4 commands at the same time. This is used to send Channels numbers based on the Presets in the Parent app."
+        		paragraph "<b>Channel_Button:</b><br>Also, used to send 1 to 4 commands at the same time. This is used to send Channels numbers based on the Presets in the Parent app. Note: this can not be used with Google Assistant."
+        		paragraph "<b>Important:</b><br>Each child app takes a device to trigger the commands, so be sure to create either a Virtual Switch or Virtual Button before trying to create a child app."
+				paragraph "<b>Google Assistant Notes:</b><br>Google Assistant only works with switches. If creating virtual switches for channels, be sure to use the 'Enable auto off' @ '500ms' to give the effect of a button in a Dashboard but still be able to tell Google to control it."
+				}
+  				section(getFormat("header-green", "${getImage("Blank")}"+" Child Apps")) {
+				app(name: "anyOpenApp", appName: "Send IP2IR Child", namespace: "BPTWorld", title: "<b>Add a new 'Send IP2IR' child</b>", multiple: true)
+			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" General")) {
+       			label title: "Enter a name for parent app (optional)", required: false
+ 			}
+			section(getFormat("header-green", "${getImage("Blank")}"+" Advanced Config")) {
+            	paragraph "<b>Be sure to enter in the Preset Values in Advanced Config before creating Child Apps</b>"
+			}
             	section("Advanced Config:", hideable: true, hidden: true) {
             		input "msgDigit1", "text", required: true, title: "IR Code to Send - 1", defaultValue: ""
                     input "msgDigit2", "text", required: true, title: "IR Code to Send - 2", defaultValue: ""
@@ -144,28 +128,60 @@ def mainPage() {
                     input "msgDigit8", "text", required: true, title: "IR Code to Send - 8", defaultValue: ""
                     input "msgDigit9", "text", required: true, title: "IR Code to Send - 9", defaultValue: ""
                     input "msgDigit0", "text", required: true, title: "IR Code to Send - 0", defaultValue: ""
-                    input "msgDigitE", "text", required: true, title: "IR Code to Send - Enter", defaultValue: ""
+                    input "msgDigitE", "text", required: false, title: "IR Code to Send - Enter", defaultValue: ""
                 }
 		}
+		display()
 	}
 }
 
 def installCheck(){         
-   state.appInstalled = app.getInstallationState() 
-  if(state.appInstalled != 'COMPLETE'){
-section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
-  }
-    else{
- //       log.info "Parent Installed OK"
-    }
-	}
-
-def display(){
-	section{paragraph "Version: 1.1.0<br>@BPTWorld"}     
-}         
-
-def setVersion(){
-		state.InternalName = "SendIP2IRParent"  
+	state.appInstalled = app.getInstallationState() 
+	if(state.appInstalled != 'COMPLETE'){
+		section{paragraph "Please hit 'Done' to install '${app.label}' parent app "}
+  	}
+  	else{
+    	log.info "Parent Installed OK"
+  	}
 }
 
+def getImage(type) {
+    def loc = "<img src=https://raw.githubusercontent.com/bptworld/Hubitat/master/resources/images/"
+    if(type == "Blank") return "${loc}blank.png height=40 width=5}>"
+}
 
+def getFormat(type, myText=""){
+	if(type == "header-green") return "<div style='color:#ffffff;font-weight: bold;background-color:#81BC00;border: 1px solid;box-shadow: 2px 3px #A9A9A9'>${myText}</div>"
+    if(type == "line") return "\n<hr style='background-color:#1A77C9; height: 1px; border: 0;'></hr>"
+	if(type == "title") return "<h2 style='color:#1A77C9;font-weight: bold'>${myText}</h2>"
+}
+
+def checkForUpdate(){
+	def params = [uri: "https://raw.githubusercontent.com/bptworld/Hubitat/master/Apps/Send%20IP2IR/version.json",
+				   	contentType: "application/json"]
+       	try {
+			httpGet(params) { response ->
+				def results = response.data
+				def appStatus
+				if(version() == results.currVersion){
+					appStatus = "${version()} - No Update Available - ${results.discussion}"
+				}
+				else {
+					appStatus = "<div style='color:#FF0000'>${version()} - Update Available (${results.currVersion})!</div><br>${results.parentRawCode}  ${results.childRawCode}  ${results.discussion}"
+					log.warn "${app.label} has an update available - Please consider updating."
+				}
+				return appStatus
+			}
+		} 
+        catch (e) {
+        	log.error "Error:  $e"
+    	}
+}
+
+def display(){
+	section() {
+		def verUpdate = "${checkForUpdate()}"
+		paragraph getFormat("line")
+		paragraph "<div style='color:#1A77C9;text-align:center'>Send IP2IR - @BPTWorld<br><a href='https://github.com/bptworld/Hubitat' target='_blank'>Find more apps on my Github, just click here!</a><br>${verUpdate}</div>"
+	}       
+}          
