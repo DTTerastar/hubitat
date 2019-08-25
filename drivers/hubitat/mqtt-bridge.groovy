@@ -97,7 +97,7 @@ def deviceNotification(message) {
 	}
 
 	def headers = [:]
-	headers.put("Host", "$ip:$port")
+	headers.put("HOST", "$ip:$port")
 	headers.put("Content-Type", "application/json")
 
 	def hubAction = new hubitat.device.HubAction(

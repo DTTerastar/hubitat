@@ -26,16 +26,6 @@ metadata {
       description: "Most door & window sensors are Normally Open (NO), meaning that the circuit closes when the door/window is closed. To reverse this logic, select Normally Closed (NC)."
   }
 
-  tiles {
-    multiAttributeTile(name:"main", type: "generic", width: 6, height: 4, canChangeIcon: true) {
-      tileAttribute ("device.contact", key: "PRIMARY_CONTROL") {
-        attributeState ("closed", label: "Closed", icon:"st.contact.contact.closed", backgroundColor:"#00a0dc")
-        attributeState ("open",   label: "Open",   icon:"st.contact.contact.open",   backgroundColor:"#e86d13")
-      }
-    }
-    main "main"
-    details "main"
-  }
 }
 
 def isClosed() {
@@ -50,5 +40,5 @@ def isOpen() {
 def setStatus(state) {
   def stateValue = state == "1" ? isOpen() : isClosed()
   sendEvent(name: "contact", value: stateValue)
-  log.debug "$device.label is $stateValue"
+  log.info "$device.label is $stateValue"
 }

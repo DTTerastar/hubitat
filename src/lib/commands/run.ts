@@ -20,8 +20,8 @@ export default function init(program: CommanderStatic) {
     });
 }
 
-async function runCommand(id: number, command: string, args: string[]) {
-  const body: { [name: string]: string } = { id: String(id), method: command };
+async function runCommand(id: string, command: string, args: string[]) {
+  const body: { [name: string]: string } = { id: id, method: command };
   if (args) {
     args.forEach((arg, i) => {
       body[`arg[${i + 1}]`] = arg;

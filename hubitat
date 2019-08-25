@@ -1,31 +1,12 @@
 #!/bin/bash
 
+mydir="${0%/*}"
 set -e
 
-needsRebuild() {
-	files=$(find . -name '*.ts' -not -path './src/node_modules/*')
-	for ts in $files; do
-		js="${ts%.*}.js"
-		if [[ (! -f $js) || ($ts -nt $js) ]]; then
-			echo 'rebuild'
-			return
-		fi
-	done
-}
 
-if [[ ! -d 'src/node_modules' ]]; then
+if [[ ! -d "$mydir/src/node_modules" ]]; then
 	echo 'Installing script dependencies...'
-	cd src
-	npm install
-	cd ..
+	(cd $mydir/src; npm install)
 fi
 
-if [[ -n $(needsRebuild) ]]; then
-	echo 'Building the script...'
-	cd src
-	npm --silent run build
-	cd ..
-fi
-
-# Use --no-warnings to suppress the fs.promises ExperimentalWarning
-node --no-warnings src/index.js $*
+(cd $mydir; src/node_modules/.bin/ts-node --project src/tsconfig.json src/index.ts $*)

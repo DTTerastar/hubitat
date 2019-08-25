@@ -20,7 +20,7 @@ export function getFilename(resource: CodeResource) {
   if (!name) {
     throw new Error(`Empty name for ${JSON.stringify(resource)}`);
   }
-  return `${namespace}-${name!.toLowerCase().replace(/\s/g, '_')}.groovy`;
+  return `${namespace!.toLowerCase()}/${name!.toLowerCase().replace(/[\-\—\s\(\)]/g, '-').replace(/-+$/g, '').replace(/\-+/g, '-')}.groovy`;
 }
 
 /**
@@ -137,7 +137,7 @@ export function validateId(value?: string) {
   if (isNaN(id)) {
     die('ID must be a number');
   }
-  return id;
+  return value;
 }
 
 /**

@@ -27,17 +27,6 @@ metadata {
           description: "Off delay (in milliseconds)"
   }
 
-  tiles {
-    multiAttributeTile(name:"main", type: "generic", width: 6, height: 4, canChangeIcon: true) {
-      tileAttribute ("device.switch", key: "PRIMARY_CONTROL") {
-        attributeState "off", label: 'Push', action: "momentary.push", backgroundColor: "#ffffff", nextState: "pushed"
-        attributeState "on", label: 'Push', action: "momentary.push", backgroundColor: "#00a0dc"
-        attributeState "pushed", label:'pushed', action: "momentary.push", backgroundColor:"#00a0dc", nextState: "off"
-      }
-    }
-    main "main"
-    details "main"
-  }
 }
 
 def updated() {
@@ -45,12 +34,23 @@ def updated() {
 }
 
 def updatePinState(Integer state) {
-  sendEvent(name: "switch", value: "on", isStateChange: true, display: false)
+  def off = invertTrigger ? 1 : 0
+  if (state == off) {
+    sendEvent(name: "switch", value: "off", isStateChange: true, display: false)
+  } else {
+    sendEvent(name: "switch", value: "on", isStateChange: true, display: false)
+    def delaySeconds = (momentaryDelay ?: 1000) / 1000 as Integer
+    runIn(Math.max(delaySeconds, 1), switchOff)
+  }
+}
+
+def switchOff() {
   sendEvent(name: "switch", value: "off", isStateChange: true, display: false)
 }
 
 def off() {
-  push()
+  def val = invertTrigger ? 1 : 0
+  parent.deviceUpdateDeviceState(device.deviceNetworkId, val)
 }
 
 def on() {

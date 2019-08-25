@@ -1,0 +1,4 @@
+#!/bin/bash
+mydir="${0%/*}"
+(cd $mydir; rm -rf apps drivers manifest.json)
+$mydir/hubitat pull

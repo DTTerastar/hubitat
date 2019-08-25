@@ -1,33 +1,6 @@
 /*****************************************************************************************************************
  *  Copyright David Lomas (codersaur)
- *
- *  Name: InfluxDB Logger
- *
- *  Date: 2017-04-03
- *
- *  Version: 1.11
- *
- *  Source: https://github.com/codersaur/SmartThings/tree/master/smartapps/influxdb-logger
- *
- *  Author: David Lomas (codersaur)
- *
- *  Description: A SmartApp to log SmartThings device states to an InfluxDB database.
- *
- *  For full information, including installation instructions, exmples, and version history, see:
- *   https://github.com/codersaur/SmartThings/tree/master/smartapps/influxdb-logger
- *
- *  IMPORTANT - To enable the resolution of groupNames (i.e. room names), you must manually insert the group IDs
- *   into the getGroupName() command code at the end of this file.
- *
- *  License:
- *   Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *   in compliance with the License. You may obtain a copy of the License at:
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- *   Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *   on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
- *   for the specific language governing permissions and limitations under the License.
+ *  Modified  Darrell Turner
  *****************************************************************************************************************/
 definition(
     name: "InfluxDB Logger",
@@ -449,8 +422,14 @@ def handleEvent(evt) {
         valueBinary = ('touched' == evt.value) ? '1i' : '0i'
         data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
     }
-    else if ('trackDescription' == evt.name) { // thermostatSetpointMode: Calculate a binary value (followSchedule = 0, <any other value> = 1)
+    else if ('trackDescription' == evt.name) { // thermostatSetpointMode: Calculate a binary value ('' = 0, <any other value> = 1)
         unit = 'trackDescription'
+        value = '"' + value + '"'
+        valueBinary = ('' == evt.value) ? '0i' : '1i'
+        data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
+    }
+    else if ('color' == evt.name) { // color: Calculate a binary value ('' = 0, <any other value> = 1)
+        unit = 'color'
         value = '"' + value + '"'
         valueBinary = ('' == evt.value) ? '0i' : '1i'
         data += ",unit=${unit} value=${value},valueBinary=${valueBinary}"
@@ -610,40 +589,17 @@ def logSystemProperties() {
  **/
 def postToInfluxDB(data) {
     logger("postToInfluxDB(): Posting data to InfluxDB: Host: ${state.databaseHost}, Port: ${state.databasePort}, Database: ${state.databaseName}, Data: [${data}]","info")
-    //logger("$state", "info")
-    //try {
-    //    //def hubAction = new physicalgraph.device.HubAction(
-    //    def hubAction = new hubitat.device.HubAction(
-    //    	[
-    //            method: "POST",
-    //            path: state.path,
-    //            body: data,
-    //            headers: state.headers
-    //        ],
-    //        null,
-    //        [ callback: handleInfluxResponse ]
-    //    )
-	//	
-    //    sendHubCommand(hubAction)
-    //    //logger("hubAction command sent", "info")
-    //}
-    //catch (Exception e) {
-	//	logger("postToInfluxDB(): Exception ${e} on ${hubAction}","error")
-    //}
-
-    // For reference, code that could be used for WAN hosts:
-     def url = "http://${state.databaseHost}:${state.databasePort}/write?db=${state.databaseName}" 
-        try {
-          httpPost(url, data) { response ->
-              if (response.status != 999 ) {
-                  //log.debug "Response Status: ${response.status}"
-                 //log.debug "Response data: ${response.data}"
-                  //log.debug "Response contentType: ${response.contentType}"
-                }
-          }
-      } catch (e) {	
-          logger("postToInfluxDB(): Something went wrong when posting: ${e}","error")
-      }
+	try {
+		def postParams = [
+			uri: "http://${state.databaseHost}:${state.databasePort}/write?db=${state.databaseName}" ,
+			requestContentType: 'application/json',
+			contentType: 'application/json',
+			body : data
+			]
+		asynchttpPost('handleInfluxResponse', postParams) 
+	} catch (e) {	
+		logger("postToInfluxDB(): Something went wrong when posting: ${e}","error")
+	}
 }
 
 /**
@@ -651,11 +607,10 @@ def postToInfluxDB(data) {
  *
  *  Handles response from post made in postToInfluxDB().
  **/
-//def handleInfluxResponse(physicalgraph.device.HubResponse hubResponse) {
-def handleInfluxResponse(hubitat.device.HubResponse hubResponse) {
-    //logger("hubresponse: $hubResponse", "info")
+def handleInfluxResponse(hubResponse, data) {
+    //logger("postToInfluxDB(): status of post call is: ${hubResponse.status}", "info")
     if(hubResponse.status >= 400) {
-		logger("postToInfluxDB(): Something went wrong! Response from InfluxDB: Headers: ${hubResponse.headers}, Body: ${hubResponse.body}","error")
+		logger("postToInfluxDB(): Something went wrong! Response from InfluxDB: Status: ${hubResponse.status}, Headers: ${hubResponse.headers}, Data: ${data}","error")
     }
 }
 

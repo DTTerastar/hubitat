@@ -54,19 +54,19 @@ export default function init(program: CommanderStatic) {
 function color(level: string)
 {
   switch(level){
-    case "info":return chalk.yellow;
+    case "trace":return chalk.grey;
     case "debug":return chalk.blueBright;
-    case "trace":return chalk.blue;
-    case "warn":return chalk.red;
+    case "warn":return chalk.yellowBright;
     case "error":return chalk.redBright;
-    default: return chalk.white;
+    default: return chalk.magentaBright;
   }
 }
 
 function logMessage(entities: TextConverter, message: Message) {
   const { time, type, msg, level, id, name } = message;
+  var levelId = `${level.slice(0,3)} [${type}:${String("0000" + id).slice(-4)}] ${name}`;
   console.log(color(level)(
-    `${chalk.gray(time)} ${level.slice(0,3)} [${chalk.magenta(type)}:${chalk.white(String("0000" + id).slice(-4))}] ${chalk.white(name)} - ${entities.decode(msg)}`
+    `${chalk.gray(time)} ${chalk.dim(levelId)} - ${entities.decode(msg)}`
   ));
 }
 
@@ -77,7 +77,6 @@ function validateType(type: string): 'app' | 'dev' {
   if (/dev(ices)?/.test(type)) {
     return 'dev';
   }
-  die('Type should be "app" or "dev"');
   return <any>'';
 }
 
@@ -86,7 +85,7 @@ interface Message {
   type: string;
   level: string;
   time: string;
-  id: number;
+  id: string;
   msg: string;
 }
 
