@@ -6,9 +6,21 @@
  *
  ***********************************************************************************************************************/
 
-public static String version()      {  return "v1.4.1"  }
+public static String version()      {  return "v1.4.4"  }
 
 /***********************************************************************************************************************
+ *
+ * Version: 1.4.4
+ *			Increased Lux 'slices of a day' to include the next day
+ *                Increased pollSunRiseSet to every 8 hours (3 times a day)
+ *                Used "cityName" override option everywhere obs.location.name is used.
+ *
+ * Version: 1.4.3
+ *                Change "float" values to BigDecimal or Integer.
+ *			'Name' and 'City' are duplicates, but made them display the same text.
+ *
+ * Version: 1.4.2
+ *                Skip forecastPrecip and mytile data calculations if the user hasn't enabled them.
  *
  * Version: 1.4.1
  *                Corrected typo for forecastIcon (in getWUIconName)
@@ -166,7 +178,6 @@ metadata    {
 		attribute "betwixt",       "string"
 	
 		command "refresh"
-//		command "WipeState"			// **---** delete for Release
 //		command "updateLux"			// **---** delete for Release
 //		command "pollSunRiseSet"		// **---** delete for Release
 //		command "updateCheck"			// **---** delete for Release
@@ -194,19 +205,10 @@ metadata    {
     }
 }
 
+
 // helpers
 def refresh()	{ poll() }
 
-
-/* **---** delete for Release
-    def WipeState() 
-    {
-    	log.warn "Wiping Weather Data"
-    	state.clear()
-    	unschedule()
-    }
-    
-// **---** ^^^ */
 
 /*
 	updated
@@ -240,10 +242,10 @@ def doPoll(obs) {
 	sendEvent(name: "lastXUupdate", value: now)
 
 	// Update Attributes for the defined Capabilities
-	sendEvent(name: "humidity", value: obs.current.humidity.toFloat(), unit: "%")
-	sendEvent(name: "pressure", value: (isFahrenheit ? obs.current.pressure_in.toFloat() : obs.current.pressure_mb.toFloat()), unit: "${(isFahrenheit ? 'IN' : 'MBAR')}")
-	sendEvent(name: "temperature", value: (isFahrenheit ? obs.current.temp_f.toFloat() : obs.current.temp_c.toFloat()), unit: "${(isFahrenheit ? 'F' : 'C')}")
-	sendEvent(name: "ultravioletIndex", value: obs.current.uv.toFloat())
+	sendEvent(name: "humidity", value: obs.current.humidity.toInteger(), unit: "%")
+	sendEvent(name: "pressure", value: (isFahrenheit ? obs.current.pressure_in.toInteger() : obs.current.pressure_mb.toInteger()), unit: "${(isFahrenheit ? 'IN' : 'MBAR')}")
+	sendEvent(name: "temperature", value: (isFahrenheit ? obs.current.temp_f.toBigDecimal() : obs.current.temp_c.toBigDecimal()), unit: "${(isFahrenheit ? 'F' : 'C')}")
+	sendEvent(name: "ultravioletIndex", value: obs.current.uv.toInteger())
 
 	if (localSunrisePublish) {
 		if (debugOutput) log.debug "localSunrise Group"
@@ -255,23 +257,23 @@ def doPoll(obs) {
 	if (open_weatherPublish) {
 		if (debugOutput) log.debug "open_weather Group"
 		sendEvent(name: "weatherIcons", value: getOWIconName(obs.current.condition.code, obs.current.is_day))
-		sendEvent(name: "windSpeed", value: (isFahrenheit ? obs.current.wind_mph.toFloat() : obs.current.wind_kph.toFloat()))
+		sendEvent(name: "windSpeed", value: (isFahrenheit ? obs.current.wind_mph.toInteger() : obs.current.wind_kph.toInteger()))
 		sendEvent(name: "windDirection", value: obs.current.wind_degree.toInteger())
 	}
 	if (tempHiLowPublish) {
 		if (debugOutput) log.debug "temp+1 Hi/Lo Group"
-		sendEvent(name: "temperatureHighDayPlus1", value: (isFahrenheit ? obs.forecast.forecastday[0].day.maxtemp_f.toFloat() :
-	                        obs.forecast.forecastday[0].day.maxtemp_c.toFloat()), unit: "${(isFahrenheit ? 'F' : 'C')}")
-		sendEvent(name: "temperatureLowDayPlus1", value: (isFahrenheit ? obs.forecast.forecastday[0].day.mintemp_f.toFloat() :
-                            obs.forecast.forecastday[0].day.mintemp_c.toFloat()), unit: "${(isFahrenheit ? 'F' : 'C')}")
+		sendEvent(name: "temperatureHighDayPlus1", value: (isFahrenheit ? obs.forecast.forecastday[0].day.maxtemp_f.toInteger() :
+	                        obs.forecast.forecastday[0].day.maxtemp_c.toInteger()), unit: "${(isFahrenheit ? 'F' : 'C')}")
+		sendEvent(name: "temperatureLowDayPlus1", value: (isFahrenheit ? obs.forecast.forecastday[0].day.mintemp_f.toInteger() :
+                            obs.forecast.forecastday[0].day.mintemp_c.toInteger()), unit: "${(isFahrenheit ? 'F' : 'C')}")
 	}
 	if (latPublish) { // latitude and longitude group
 		if (debugOutput) log.debug "Lat/Long Group"
-		sendEvent(name: "lat", value: obs.location.lat.toFloat())
-		sendEvent(name: "lon", value: obs.location.lon.toFloat())
+		sendEvent(name: "lat", value: obs.location.lat.toBigDecimal())
+		sendEvent(name: "lon", value: obs.location.lon.toBigDecimal())
 	}
 
-	sendEventPublish(name: "city", value: (cityName ?: obs.location.name))
+	sendEventPublish(name: "city", value: (cityName ?: (obs.location.name ?: "n/a")))
 	sendEventPublish(name: "cloud", value: obs.current.cloud.toInteger(), unit: "%")
 	sendEventPublish(name: "condition_code", value: obs.current.condition.code.toInteger())
 	sendEventPublish(name: "condition_codeDayPlus1", value: obs.forecast.forecastday[0].day.condition.code.toInteger())
@@ -279,8 +281,8 @@ def doPoll(obs) {
 	sendEventPublish(name: "condition_icon_url", value: 'https:' + obs.current.condition.icon)
 	sendEventPublish(name: "condition_icon", value: '<img src=https:' + obs.current.condition.icon + '>')
 	sendEventPublish(name: "condition_text", value: obs.current.condition.text)
-	sendEventPublish(name: "country", value: obs.location.country)
-	sendEventPublish(name: "feelsLike", value: (isFahrenheit ? obs.current.feelslike_f.toFloat() : obs.current.feelslike_c.toFloat()), unit: "${(isFahrenheit ? 'F' : 'C')}")
+	sendEventPublish(name: "country", value: (obs.location.country ?: " "))
+	sendEventPublish(name: "feelsLike", value: (isFahrenheit ? obs.current.feelslike_f.toBigDecimal() : obs.current.feelslike_c.toBigDecimal()), unit: "${(isFahrenheit ? 'F' : 'C')}")
 	sendEventPublish(name: "forecastIcon", value: getWUIconName(obs.current.condition.code, obs.current.is_day))
 	sendEventPublish(name: "is_day", value: obs.current.is_day.toInteger())
 	sendEventPublish(name: "last_updated_epoch", value: obs.current.last_updated_epoch.toInteger())
@@ -288,10 +290,10 @@ def doPoll(obs) {
 	sendEventPublish(name: "local_date", value: state.thisDate)
 	sendEventPublish(name: "local_time", value: state.thisTime)
 	sendEventPublish(name: "localtime_epoch", value: obs.location.localtime_epoch.toInteger())
-	sendEventPublish(name: "location", value: obs.location.name + ', ' + obs.location.region)
-	sendEventPublish(name: "name", value: obs.location.name)
-	sendEventPublish(name: "percentPrecip", value: (isFahrenheit ? obs.current.precip_in.toFloat() : obs.current.precip_mm.toFloat()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
-	sendEventPublish(name: "region", value: obs.location.region)
+	sendEventPublish(name: "location", value: ((obs.location.name ?: "n/a") + ', ' + (obs.location.region ?: " ")))
+	sendEventPublish(name: "name", value: (cityName ?: (obs.location.name ?: "n/a")))
+	sendEventPublish(name: "percentPrecip", value: (isFahrenheit ? obs.current.precip_in.toBigDecimal() : obs.current.precip_mm.toBigDecimal()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
+	sendEventPublish(name: "region", value: (obs.location.region ?: " "))
 	sendEventPublish(name: "twilight_begin", value: state.twiBegin, descriptionText: "Twilight begins today at $state.twiBegin")
 	sendEventPublish(name: "twilight_end", value: state.twiEnd, descriptionText: "Twilight ends today at $state.twiEnd")	
 	sendEventPublish(name: "tz_id", value: obs.location.tz_id)
@@ -303,28 +305,28 @@ def doPoll(obs) {
 	sendEventPublish(name: "wind_degree", value: obs.current.wind_degree.toInteger(), unit: "DEGREE")
 	sendEventPublish(name: "wind_dir", value: obs.current.wind_dir)
 	sendEventPublish(name: "wind_mytile", value: wind_mytile)
-	sendEventPublish(name: "wind", value: (isFahrenheit ? obs.current.wind_mph.toFloat() : obs.current.wind_kph.toFloat()), unit: "${(isFahrenheit ? 'MPH' : 'KPH')}")
+	sendEventPublish(name: "wind", value: (isFahrenheit ? obs.current.wind_mph.toInteger() : obs.current.wind_kph.toInteger()), unit: "${(isFahrenheit ? 'MPH' : 'KPH')}")
 
 	if (isFahrenheit)	{
-		sendEventPublish(name: "wind_mph", value: obs.current.wind_mph.toFloat(), unit: "MPH")
-		sendEventPublish(name: "precip_in", value: obs.current.precip_in.toFloat(), unit: "IN")
-		sendEventPublish(name: "feelslike_f", value: obs.current.feelslike_f.toFloat(), unit: "F")
-		sendEventPublish(name: "vis_miles", value: obs.current.vis_miles.toFloat(), unit: "MILES")
+		sendEventPublish(name: "wind_mph", value: obs.current.wind_mph.toBigDecimal(), unit: "MPH")
+		sendEventPublish(name: "precip_in", value: obs.current.precip_in.toBigDecimal(), unit: "IN")
+		sendEventPublish(name: "feelslike_f", value: obs.current.feelslike_f.toBigDecimal(), unit: "F")
+		sendEventPublish(name: "vis_miles", value: obs.current.vis_miles.toBigDecimal(), unit: "MILES")
 	}
 	else {
-		sendEventPublish(name: "wind_kph", value: obs.current.wind_kph.toFloat(), unit: "KPH")
-		sendEventPublish(name: "wind_mps", value: ((obs.current.wind_kph / 3.6f).round(1).toFloat()), unit: "MPS")
-		sendEventPublish(name: "precip_mm", value: obs.current.precip_mm.toFloat(), unit: "MM")
-		sendEventPublish(name: "feelsLike_c", value: obs.current.feelslike_c.toFloat(), unit: "C")
-		sendEventPublish(name: "vis_km", value: obs.current.vis_km.toFloat(), unit: "KM")
+		sendEventPublish(name: "wind_kph", value: obs.current.wind_kph.toBigDecimal(), unit: "KPH")
+		sendEventPublish(name: "wind_mps", value: ((obs.current.wind_kph / 3.6f).round(1).toBigDecimal()), unit: "MPS")
+		sendEventPublish(name: "precip_mm", value: obs.current.precip_mm.toBigDecimal(), unit: "MM")
+		sendEventPublish(name: "feelsLike_c", value: obs.current.feelslike_c.toBigDecimal(), unit: "C")
+		sendEventPublish(name: "vis_km", value: obs.current.vis_km.toInteger(), unit: "KM")
 	}
 	if (precipExtendedPublish) {
 		if (debugOutput) log.debug "Extended Precip Group"
-		sendEvent(name: "precipDayMinus2", value: (isFahrenheit ? state.forecastPrecip.precipDayMinus2.inch.toFloat() : state.forecastPrecip.precipDayMinus2.mm.toFloat()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
-		sendEvent(name: "precipDayMinus1", value: (isFahrenheit ? state.forecastPrecip.precipDayMinus1.inch.toFloat() : state.forecastPrecip.precipDayMinus1.mm.toFloat()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
-		sendEvent(name: "precipDay0", value: (isFahrenheit ? state.forecastPrecip.precipDay0.inch.toFloat() : state.forecastPrecip.precipDay0.mm.toFloat()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
-		sendEvent(name: "precipDayPlus1", value: (isFahrenheit ? state.forecastPrecip.precipDayPlus1.inch.toFloat() : state.forecastPrecip.precipDayPlus1.mm.toFloat()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
-		sendEvent(name: "precipDayPlus2", value: (isFahrenheit ? state.forecastPrecip.precipDayPlus2.inch.toFloat() : state.forecastPrecip.precipDayPlus2.mm.toFloat()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
+		sendEvent(name: "precipDayMinus2", value: (isFahrenheit ? state.forecastPrecip.precipDayMinus2.inch.toBigDecimal() : state.forecastPrecip.precipDayMinus2.mm.toBigDecimal()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
+		sendEvent(name: "precipDayMinus1", value: (isFahrenheit ? state.forecastPrecip.precipDayMinus1.inch.toBigDecimal() : state.forecastPrecip.precipDayMinus1.mm.toBigDecimal()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
+		sendEvent(name: "precipDay0", value: (isFahrenheit ? state.forecastPrecip.precipDay0.inch.toBigDecimal() : state.forecastPrecip.precipDay0.mm.toBigDecimal()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
+		sendEvent(name: "precipDayPlus1", value: (isFahrenheit ? state.forecastPrecip.precipDayPlus1.inch.toBigDecimal() : state.forecastPrecip.precipDayPlus1.mm.toBigDecimal()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
+		sendEvent(name: "precipDayPlus2", value: (isFahrenheit ? state.forecastPrecip.precipDayPlus2.inch.toBigDecimal() : state.forecastPrecip.precipDayPlus2.mm.toBigDecimal()), unit: "${(isFahrenheit ? 'IN' : 'MM')}")
 	}
 
 	sendEventPublish(name: "mytile", value: mytext)
@@ -359,7 +361,7 @@ def pollHandler(resp, data) {
     //    	if (debugOutput) log.debug "wx-ApiXU returned: $obs"
 		doPoll(obs)		// parse the data returned by ApiXU
 	} else {
-		log.error "wx-ApiXU weather api did not return data: $resp"
+		log.error "wx-ApiXU weather api did not return data"
 	}
 }
 
@@ -374,6 +376,7 @@ def pollHandler(resp, data) {
 def pollSunRiseSet() {
 	if (state.loc_lat) {
 		def requestParams = [ uri: "https://api.sunrise-sunset.org/json?lat=$state.loc_lat&lng=$state.loc_lon&formatted=0" ]
+		if (state.thisDate) {requestParams = [ uri: "https://api.sunrise-sunset.org/json?lat=$state.loc_lat&lng=$state.loc_lon&formatted=0&date=$state.thisDate" ]}
 		if (descTextEnable) log.info "SunRiseSet poll for $state.loc_lat  $state.loc_lon" //$requestParams"
 		asynchttpGet("sunRiseSetHandler", requestParams)
 	} else {
@@ -396,7 +399,7 @@ def sunRiseSetHandler(resp, data) {
 		state.forecastPrecip.precipDayMinus2 = state?.forecastPrecip?.precipDayMinus1
 		state.forecastPrecip.precipDayMinus1 = state?.forecastPrecip?.precipDay0
 	} else {
-		log.warn "wx-ApiXU sunrise-sunset api did not return data: $resp"
+		log.warn "wx-ApiXU sunrise-sunset api did not return data"
 		state.sunRiseSet.init = false
 	}
 }
@@ -421,7 +424,7 @@ def updateLux() {
 		state.luxNext ? { schedule("0 0/${luxEvery} * * * ?", updateLux) } : {if (lowLuxEvery != 999) { schedule("0 0/${lowLuxEvery} * * * ?", updateLux) } }
         	//if (debugOutput) log.debug "Lux: $lux, $state.luxNext, $bwn"
       
-		sendEvent(name: "illuminance", value: lux, unit: "lux")
+		sendEvent(name: "illuminance", value: lux.toInteger(), unit: "lux")
 		sendEventPublish(name: "illuminated", value: String.format("%,d lux", lux))
 		sendEventPublish(name: "betwixt", value: bwn)
 	} else {
@@ -441,37 +444,71 @@ def estimateLux(condition_code, cloud)     {
 	def tZ                   = TimeZone.getTimeZone(state.tz_id)
 	def lT                   = new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX", tZ)
 	def localeMillis         = getEpoch(lT)
-	def sunriseTimeMillis    = getEpoch(sunRiseSet.sunrise)
-	def sunsetTimeMillis     = getEpoch(sunRiseSet.sunset)
-	def noonTimeMillis       = getEpoch(sunRiseSet.solar_noon)
 	def twilight_beginMillis = getEpoch(sunRiseSet.civil_twilight_begin)
+	def sunriseTimeMillis    = getEpoch(sunRiseSet.sunrise)
+	def noonTimeMillis       = getEpoch(sunRiseSet.solar_noon)
+	def sunsetTimeMillis     = getEpoch(sunRiseSet.sunset)
 	def twilight_endMillis   = getEpoch(sunRiseSet.civil_twilight_end)
-	// log.debug "millis: $lT, $localeMillis, $twilight_beginMillis, $sunriseTimeMillis, $noonTimeMillis, $sunsetTimeMillis, $twilight_endMillis"
+	def twiStartNextMillis   = twilight_beginMillis + 86400000 // = 24*60*60*1000 --> one day in milliseconds
+	def sunriseNextMillis    = sunriseTimeMillis + 86400000 
+	def noonTimeNextMillis   = noonTimeMillis + 86400000 
+	def sunsetNextMillis     = sunsetTimeMillis + 86400000
+	def twiEndNextMillis     = twilight_endMillis + 86400000
 
-	if (   localeMillis > twilight_beginMillis   && localeMillis < sunriseTimeMillis)  {
-		bwn = "between twilight and sunrise" 
-		l = (((localeMillis - twilight_beginMillis) * 50f) / (sunriseTimeMillis - twilight_beginMillis))
-		lux = (l < 10f ? 10l : l.trunc(0) as long)
-	}
-	else if (localeMillis > sunriseTimeMillis    && localeMillis < noonTimeMillis )    { 
-		bwn = "between sunrise and noon" 
-		l = (((localeMillis - sunriseTimeMillis) * 10000f) / (noonTimeMillis - sunriseTimeMillis))
-		lux = (l < 50f ? 50l : l.trunc(0) as long)
-	}
-	else if (localeMillis > noonTimeMillis       && localeMillis < sunsetTimeMillis)   {
-		bwn = "between noon and sunset" 
-		l = (((sunsetTimeMillis - localeMillis) * 10000f) / (sunsetTimeMillis - noonTimeMillis))
-		lux = (l < 50f ? 50l : l.trunc(0) as long)
-	}
-	else if (localeMillis > sunsetTimeMillis     && localeMillis < twilight_endMillis) {
-		bwn = "between sunset and twilight" 
-		l = (((twilight_endMillis - localeMillis) * 50f) / (twilight_endMillis - sunsetTimeMillis))
-		lux = (l < 10f ? 10l : l.trunc(0) as long)
-	}
-	else {
-		bwn = "Fully Night Time" 
-		lux = 5l
-		aFCC = false
+	switch(localeMillis) { 
+		case { it < twilight_beginMillis}: 
+			bwn = "Fully Night Time" 
+			lux = 5l
+			break
+		case { it < sunriseTimeMillis}:
+			bwn = "between twilight and sunrise" 
+			l = (((localeMillis - twilight_beginMillis) * 50f) / (sunriseTimeMillis - twilight_beginMillis))
+			lux = (l < 10f ? 10l : l.trunc(0) as long)
+			break
+		case { it < noonTimeMillis}:
+			bwn = "between sunrise and noon" 
+			l = (((localeMillis - sunriseTimeMillis) * 10000f) / (noonTimeMillis - sunriseTimeMillis))
+			lux = (l < 50f ? 50l : l.trunc(0) as long)
+			break
+		case { it < sunsetTimeMillis}:
+			bwn = "between noon and sunset" 
+			l = (((sunsetTimeMillis - localeMillis) * 10000f) / (sunsetTimeMillis - noonTimeMillis))
+			lux = (l < 50f ? 50l : l.trunc(0) as long)
+			break
+		case { it < twilight_endMillis}:
+			bwn = "between sunset and twilight" 
+			l = (((twilight_endMillis - localeMillis) * 50f) / (twilight_endMillis - sunsetTimeMillis))
+			lux = (l < 10f ? 10l : l.trunc(0) as long)
+			break
+		case { it < twiStartNextMillis}:
+			bwn = "Fully Night Time" 
+			lux = 5l
+			break
+		case { it < sunriseNextMillis}:
+			bwn = "between twilight and sunrise" 
+			l = (((localeMillis - twiStartNextMillis) * 50f) / (sunriseNextMillis - twiStartNextMillis))
+			lux = (l < 10f ? 10l : l.trunc(0) as long)
+			break
+		case { it < noonTimeNextMillis}:
+			bwn = "between sunrise and noon" 
+			l = (((localeMillis - sunriseNextMillis) * 10000f) / (noonTimeNextMillis - sunriseNextMillis))
+			lux = (l < 50f ? 50l : l.trunc(0) as long)
+			break
+		case { it < sunsetNextMillis}:
+			bwn = "between noon and sunset" 
+			l = (((sunsetNextMillis - localeMillis) * 10000f) / (sunsetNextMillis - noonTimeNextMillis))
+			lux = (l < 50f ? 50l : l.trunc(0) as long)
+			break
+		case { it < twiEndNextMillis}:
+			bwn = "between sunset and twilight" 
+			l = (((twiEndNextMillis - localeMillis) * 50f) / (twiEndNextMillis - sunsetNextMillis))
+			lux = (l < 10f ? 10l : l.trunc(0) as long)
+			break
+		default:
+			bwn = "Fully Night Time" 
+			lux = 5l
+			aFCC = false
+			break
 	}
 
 	def cC = condition_code.toInteger()
@@ -521,20 +558,25 @@ def calcTime(wxData) {
 	imgNamePlus1 = getImgName(wxData.forecast.forecastday[0].day.condition.code, 1)
 	wind_mytile=(isFahrenheit ? "${Math.round(wxData.current.wind_mph)}" + " mph " : "${Math.round(wxData.current.wind_kph)}" + " kph ")
 	
-	// build the myTile text
-	mytext = wxData.location.name + ', ' + wxData.location.region
-	mytext += '<br>' + (isFahrenheit ? "${Math.round(wxData.current.temp_f)}" + '&deg;F ' : wxData.current.temp_c + '&deg;C ') + wxData.current.humidity + '%'
-	mytext += '<br>' + state?.localSunrise + ' <img style="height:2em" src=' + imgName + '> ' + state?.localSunset
-	mytext += (wind_mytile == (isFahrenheit ? "0 mph " : "0 kph ") ? '<br> Wind is calm' : '<br>' + wxData.current.wind_dir + ' ' + wind_mytile)
-	mytext += '<br>' + wxData.current.condition.text
-	//if (debugOutput) log.debug "mytext: $mytext"
 
-	state.forecastPrecip.precipDay0.mm = wxData.forecast.forecastday[0].day.totalprecip_mm
-	state.forecastPrecip.precipDay0.inch = wxData.forecast.forecastday[0].day.totalprecip_in
-	state.forecastPrecip.precipDayPlus1.mm = wxData.forecast.forecastday[1].day.totalprecip_mm
-	state.forecastPrecip.precipDayPlus1.inch = wxData.forecast.forecastday[1].day.totalprecip_in
-	state.forecastPrecip.precipDayPlus2.mm = wxData.forecast.forecastday[2].day.totalprecip_mm
-	state.forecastPrecip.precipDayPlus2.inch = wxData.forecast.forecastday[2].day.totalprecip_in
+	if (mytilePublish) { // don't bother setting these values if it's not enabled
+		// build the myTile text
+		mytext = (cityName ?: (wxData.location.name ?: "n/a")) + ', ' + (wxData.location.region ?: " ")
+		mytext += '<br>' + (isFahrenheit ? "${Math.round(wxData.current.temp_f)}" + '&deg;F ' : wxData.current.temp_c + '&deg;C ') + wxData.current.humidity + '%'
+		mytext += '<br>' + state?.localSunrise + ' <img style="height:2em" src=' + imgName + '> ' + state?.localSunset
+		mytext += (wind_mytile == (isFahrenheit ? "0 mph " : "0 kph ") ? '<br> Wind is calm' : '<br>' + wxData.current.wind_dir + ' ' + wind_mytile)
+		mytext += '<br>' + wxData.current.condition.text
+		//if (debugOutput) log.debug "mytext: $mytext"
+	}
+
+	if (precipExtendedPublish) { // don't bother setting these values if it's not enabled
+		state.forecastPrecip.precipDay0.mm = wxData.forecast.forecastday[0].day.totalprecip_mm
+		state.forecastPrecip.precipDay0.inch = wxData.forecast.forecastday[0].day.totalprecip_in
+		state.forecastPrecip.precipDayPlus1.mm = wxData.forecast.forecastday[1].day.totalprecip_mm
+		state.forecastPrecip.precipDayPlus1.inch = wxData.forecast.forecastday[1].day.totalprecip_in
+		state.forecastPrecip.precipDayPlus2.mm = wxData.forecast.forecastday[2].day.totalprecip_mm
+		state.forecastPrecip.precipDayPlus2.inch = wxData.forecast.forecastday[2].day.totalprecip_in
+	}
 }
 
 
@@ -624,6 +666,7 @@ def getOWIconName(condition_code, is_day)     {
     return is_day ? wIcon + 'd' : wIcon + 'n'
 }
 
+
 /*
 	getImgName
 
@@ -636,6 +679,7 @@ def getImgName(wCode, is_day)       {
 	// log.debug "getImgName: $wCode, $imgItem"
 	return (url + imgItem)
 }
+
 
 @Field static imgCondMap = [
 	1000: [imgNames: [day_img: '32.png', night_img: '31.png'], condCode: ['Sunny', 1, 'sunny', '01'] ],                                   	//  Sunny 
@@ -716,7 +760,7 @@ def getImgName(wCode, is_day)       {
 	"localtime_epoch":		[title: "Localtime epoch", descr: "", typeof: "number", default: "false"],
 	"location":				[title: "Location name with region", descr: "", typeof: "string", default: "false"],
 	"mytile":				[title: "Mytile for dashboard", descr: "", typeof: "string", default: "false"],
-	"name":				[title: "Location name", descr: "", typeof: "string", default: "false"],
+	"name":				[title: "Location name", descr: "Name of Location (duplicates 'City')", typeof: "string", default: "false"],
 	"open_weather":			[title: "OpenWeather attributes", descr: "Select duplicate wind attributes that are specific to Dashboard's Weather template", typeof: false, default: "true"],
 	"percentPrecip":			[title: "Percent precipitation", descr: "Select to display the Chance of Rain, in percent", typeof: "number", default: "true"],
 	"precipExtended":			[title: "Extended Precipitation", descr: "Select to display precipitation over a period of +- 2 days", typeof: false, default: "false"],
@@ -742,6 +786,7 @@ def getImgName(wCode, is_day)       {
 	"wind_mytile":			[title: "Wind mytile", descr: "", typeof: "string", default: "false"],
 	"wind":				[title: "Wind (in default unit)", descr: "Select to display the Wind Speed", typeof: "number", default: "true"]
 ]
+
 
 /*
 
@@ -773,9 +818,9 @@ def initialize()
 {
 	unschedule()
 	migrateTo()		// an effort to migrate from pre v1.4.0 to v1.4.0
-	schedule("23 10 0 ? * * *", pollSunRiseSet)
+	schedule("11 20 0/8 ? * * *", pollSunRiseSet)
 	schedule("0 0 8 ? * FRI *", updateCheck)
-	schedule("0 0/${luxEvery} * * * ?", updateLux)
+	schedule("11 0/${luxEvery} * * * ?", updateLux)
 	state.tz_id = TimeZone.getDefault().getID()
 	if (state?.sunRiseSet?.init == null) state.sunRiseSet = [init:false]
 	if (state?.apixu?.init      == null) state.apixu      = [init:false]
@@ -798,7 +843,7 @@ def initialize()
 private migrateTo() {
 	if (state?.sunRiseSet?.init) {
 		pollSunRiseSet()
-		state.remove("sunRiseSet") // converted to 'data' storage, no longer need 'state' storage.
+//		state.remove("sunRiseSet") // converted to 'data' storage, no longer need 'state' storage.
 		state.remove("lowLuxRepeat") // using schedule(), no longer need 'state' storage.
 	}
 }
@@ -811,6 +856,7 @@ def updateCheck()
 	
  	asynchttpGet("updateCheckHandler", paramsUD) 
 }
+
 
 def updateCheckHandler(resp, data) {
 
