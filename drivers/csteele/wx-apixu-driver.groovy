@@ -6,9 +6,12 @@
  *
  ***********************************************************************************************************************/
 
-public static String version()      {  return "v1.4.4"  }
+public static String version()      {  return "v1.4.5"  }
 
 /***********************************************************************************************************************
+ *
+ * Version: 1.4.5
+ *                Improved updateCheck() with Switch/Case.
  *
  * Version: 1.4.4
  *			Increased Lux 'slices of a day' to include the next day
@@ -874,38 +877,27 @@ def updateCheckHandler(resp, data) {
 		def author = (respUD.author)
             // log.debug "updateCheck: $newVerRaw, $state.UpdateInfo, $author"
 	
-		if(newVer == "NLS")
-		{
-		      state.Status = "<b>** This Driver is no longer supported by $author  **</b>"       
-		      log.warn "** This Driver is no longer supported by $author **"      
-		}           
-		else if(currentVer < newVer)
-		{
-		      state.Status = "<b>New Version Available (Version: $newVerRaw)</b>"
-		      log.warn "** There is a newer version of this Driver available  (Version: $newVerRaw) **"
-		      log.warn "** $state.UpdateInfo **"
-		} 
-		else if(currentVer > newVer)
-		{
-		      state.Status = "<b>You are using a Test version of this Driver (Expecting: $newVerRaw)</b>"
-		}
-		else
-		{ 
-		    state.Status = "Current"
-		    if (descTextEnable) log.info "You are using the current version of this Driver"
+		switch(newVer) {
+			case { it == "NLS"}:
+			      state.Status = "<b>** This Driver is no longer supported by ${respUD.author}  **</b>"       
+			      log.warn "** This Driver is no longer supported by ${respUD.author} **"      
+				break
+			case { it > currentVer}:
+			      state.Status = "<b>New Version Available (Version: ${respUD.driver.(state.InternalName).ver})</b>"
+			      log.warn "** There is a newer version of this Driver available  (Version: ${respUD.driver.(state.InternalName).ver}) **"
+			      log.warn "** $state.UpdateInfo **"
+				break
+			case { it < currentVer}:
+			      state.Status = "<b>You are using a Test version of this Driver (Expecting: ${respUD.driver.(state.InternalName).ver})</b>"
+				break
+			default:
+				state.Status = "Current"
+				if (descTextEnable) log.info "You are using the current version of this driver"
+				break
 		}
 	
-	      if(state.Status == "Current")
-	      {
-	           state.UpdateInfo = "N/A"
-	           sendEvent(name: "DriverUpdate", value: state.UpdateInfo)
-	           sendEvent(name: "DriverStatus", value: state.Status)
-	      }
-	      else 
-	      {
-	           sendEvent(name: "DriverUpdate", value: state.UpdateInfo)
-	           sendEvent(name: "DriverStatus", value: state.Status)
-	      }
+	      sendEvent(name: "chkUpdate", value: state.UpdateInfo)
+	      sendEvent(name: "chkStatus", value: state.Status)
       }
       else
       {
