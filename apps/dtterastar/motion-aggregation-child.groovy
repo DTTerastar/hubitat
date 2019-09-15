@@ -1,3 +1,9 @@
+/* Change Log:
+
+v1.1 Make Label show status of aggregated motion.  Will require loading and saving you name again
+v1.0 Initial
+
+*/
 definition (
     name: "Motion Aggregation Child",
     namespace: "DTTerastar",
@@ -18,7 +24,7 @@ preferences {
  def mainPage() {
 	dynamicPage(name: "mainPage") {
 		section(title: "") {                        
-			label title: "Name", required: true
+            input "myName", "string", title: "Name:", required: false, defaultValue: null, submitOnChange: true
         }
 		
 		section("Primary Motion") {
@@ -105,6 +111,15 @@ def elapsed() {
     refresh()
 }
 
+def status() {
+    def s = []
+    if (state.primaryMins?:0>0) s << "Primary ${state.primaryMins?:0}m"
+    if (state.secondaryMins?:0>0) s << "Secondary ${state.secondaryMins?:0}m"
+    if (state.contactMins?:0>0) s << "Contact ${state.contactMins?:0}m"
+    if (state.switchMins?:0>0) s << "Switch ${state.switchMins?:0}m"
+    return s.join(" ");
+}
+
 def refresh() {
     if (primaryMax>0 && state.primaryMins>primaryMax) state.primaryMins=primaryMax
     if (secondaryMax>0 && state.secondaryMins>secondaryMax) state.secondaryMins=secondaryMax
@@ -112,30 +127,37 @@ def refresh() {
     if (switchMax>0 && state.switchMins>switchMax) state.switchMins=switchMax
 
     if (isActive) {
-        
+                
         if (state.primaryMins>0 || state.secondaryMins>0 || state.contactMins>0 || state.switchMins>0) {
-            logDebug "${app.label} not turning off (primary=${state.primaryMins?:0}m secondary=${state.secondaryMins?:0}m contacts=${state.contactMins?:0}m switches=${state.switchMins?:0}m)"
+            status = status()
+            logDebug "${myName} not turning off: ${status}"
+            app.updateLabel("${myName} <span style=\"color:green\">${status}</span>")
             return;
         }
+        
+        app.updateLabel("${myName} <span style=\"color:red\">Inactive</span>")
         
         childDevices.each { it.inactive() }
         
     } else {
         
         if (state.primaryMins>0 || state.contactMins>0 || state.switchMins>0) {
-            logDebug "${app.label} turning ON (primary=${state.primaryMins?:0}m contacts=${state.contactMins?:0}m switches=${state.switchMins?:0}m)"
+            status = status()
+            logDebug "${myName} turning ON: ${status}"
+            app.updateLabel("${myName} <span style=\"color:green\">${status}</span>")
             childDevices.each { it.active() }
         }
     }        
 }
 
 private void createChildDevices() {
+    app.updateLabel(myName)
 	if (childDevices) {
 		childDevices.each {
-			it.name = app.label + " Aggregate Motion"
+			it.name = myName + " Aggregate Motion"
         }
 	} else {
-		addChildDevice("hubitat", "Virtual Motion Sensor", UUID.randomUUID().toString(), null, [completedSetup: true, isComponent: true, name: app.label + " Aggregate Motion"])
+		addChildDevice("hubitat", "Virtual Motion Sensor", UUID.randomUUID().toString(), null, [completedSetup: true, isComponent: true, name: myName + " Aggregate Motion"])
 	}
 }
 
@@ -179,7 +201,7 @@ def getIsActive() {
 
 def logsOff(){
     log.warn "debug logging disabled..."
-    device.updateSetting("debugOutput",[value:"false",type:"bool"])
+    app.updateSetting("debugOutput",[value:"false",type:"bool"])
 }
 
 private logDebug(msg) {
