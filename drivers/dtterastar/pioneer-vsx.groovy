@@ -5,19 +5,19 @@
  *   
  *  V1.0.0 - 10/15/18 - Initial release
  *  V2.0.0 - 09/01/19 - Input support
+ *  V2.1.0 - 09/15/19 - Motion sensor
  */
 
 metadata {
 	definition (name: "Pioneer VSX", namespace: "DTTerastar", author: "Darrell Turner") {
     capability "Initialize"
     capability "Switch"
-    capability "Switch Level"
+    capability "Audio Volume"
     capability "Refresh"
+    capability "Motion Sensor"
+    capability "Sensor"
 
     attribute "status", ""
-    attribute "mute", ""
-    attribute "switch", ""
-    attribute "level", ""
     attribute "inputId", ""
     attribute "input", ""
     attribute "info", ""
@@ -51,6 +51,7 @@ private dedupEvent(Map event) {
   }
   if (current != event.value) {
     sendEvent(event)
+    motion(event)
     if (logEnabled && event.descriptionText) log.info(event.descriptionText)
     return true
   } else {
@@ -72,12 +73,12 @@ def off() {
   send("PF")
 }
  
-def setLevel(level) {
-	if (level==0) 
+def setVolume(volume) {
+	if (volume==0) 
 		mute()
 	else
 	{
-    scaled = (int)Math.floor(level * 1.61)
+    scaled = (int)Math.floor(volume * 1.61)
     send(sprintf('%03d', scaled) + "VL")
 	}
 }
@@ -99,9 +100,11 @@ def toggleMute() {
 
 def volumeUp() {
     send("VU")
+    send("VU")
 }
 
 def volumeDown() {
+    send("VD")
     send("VD")
 }
 
@@ -201,7 +204,30 @@ def mapInput(String id) {
     return name
 }
 
+def motion(event) {
+  if (event.name=="switch") {
+    if (event.value=="on"){
+      state.mins = 60
+      dedupEvent([name: "motion", value:"active"])
+    } else {
+      state.mins = 0
+      dedupEvent([name: "motion", value:"inactive"])
+    }
+  }
+
+  if (event.name=="volume" || event.name=="mute" || event.input=="input") {
+    state.mins=(state.mins?:0)+(event.input=="input"?60:15)
+    if (state.mins>120) state.mins=120
+	  dedupEvent([name: "motion", value:"active"])
+  }
+}
+
 def refresh() {
+  if(state.mins>0) {
+    state.mins-=1
+    if (state.mins<=0)
+	    dedupEvent([name: "motion", value:"inactive"])
+  }
   if (state.refresh<1) state.refresh = 5
   switch(state.refresh){
       case 1:	
@@ -249,19 +275,19 @@ def parse(String msg) {
     
     if (msg.startsWith("VOL"))
     {
-        level = (int) Math.floor(msg.substring(3).toInteger() / 1.61)
-        if (level>100) level=100
-		    dedupEvent([name: 'level', value: level, unit:"%", descriptionText:"Volume at ${level}%"])
+        volume = (int) Math.floor(msg.substring(3).toInteger() / 1.61)
+        if (volume>100) volume=100
+		    dedupEvent([name: 'volume', value: volume, unit:"%", descriptionText:"Volume at ${volume}%"])
     }
     if (msg.startsWith("MUT"))
     {
-        level = msg.substring(3).toInteger()
-        dedupEvent([name: 'mute', value: level==0?'muted':'unmuted', descriptionText: level==0?'Muted':'Unmuted'])
+        mute = msg.substring(3).toInteger()
+        dedupEvent([name: 'mute', value: mute==0?'muted':'unmuted', descriptionText: mute==0?'Muted':'Unmuted'])
     }
     if (msg.startsWith("PWR"))
     {
-        level = msg.substring(3).toInteger()
-        dedupEvent([name: 'switch', value: level==0?'on':'off', descriptionText: level==0?'Turned on':'Turned off'])
+        pwr = msg.substring(3).toInteger()
+        dedupEvent([name: 'switch', value: pwr==0?'on':'off', descriptionText: pwr==0?'Turned on':'Turned off'])
     }
     if (msg.startsWith("FN"))
     {
