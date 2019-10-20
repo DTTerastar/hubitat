@@ -37,6 +37,7 @@ metadata {
 		command "previousTrack"
 		command "info"
 		command "back"
+		command "disconnect"  //////*********thanks to sthompson*********///////////
 	}
 	preferences {
 		section("Device Settings:") {
@@ -97,6 +98,9 @@ def initialize() {
 	telnetClose() 
 	log.info ("TiVo IP ${settings.TiVoIP}")
 	telnetConnect([termChars:[13]], settings.TiVoIP, 31339, settings.username, settings.password)
+}
+def disconnect() {      //////*********thanks to sthompson*********///////////
+	telnetClose()
 }
 def sendMsg(String msg){
 	log.info("Sending telnet msg: " + msg)
